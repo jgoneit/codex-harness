@@ -53,11 +53,29 @@ REVIEWER_FINDING_FIELDS = (
 
 SHELL_TOOL_NAMES = {"bash", "shell", "terminal", "exec", "command"}
 SHELL_TOOL_NAME_PARTS = ("bash", "shell", "terminal", "exec")
+SQL_CLIENTS = {"psql", "mysql", "mariadb", "sqlite3", "sqlcmd", "sqlplus"}
+NOSQL_CLIENTS = {"mongosh", "mongo", "redis-cli"}
+DB_CLIENTS = SQL_CLIENTS | NOSQL_CLIENTS
+SQL_IDENTIFIER = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"[^"]+"|`[^`]+`|\[[^\]]+\])'
+SQL_QUALIFIED_IDENTIFIER = rf"{SQL_IDENTIFIER}(?:\s*\.\s*{SQL_IDENTIFIER})*"
+SQL_PRIVILEGE_STATEMENT = (
+    r"(?:grant\s+.+?\s+to\b"
+    r"|revoke\s+.+?\s+from\b)"
+)
+SQL_PROCEDURE_STATEMENT = (
+    rf"(?:call\s+{SQL_QUALIFIED_IDENTIFIER}\s*(?:\(|;|$)"
+    rf"|exec(?:ute)?\s+(?:procedure\s+)?(?:"
+    rf"{SQL_QUALIFIED_IDENTIFIER}\s*\("
+    rf"|(?=[A-Za-z0-9_.\"`\[\]\s]*[_.]){SQL_QUALIFIED_IDENTIFIER}\s*(?:;|$)"
+    rf"))"
+)
+SQL_TEXT_COMMANDS = {"echo", "printf"}
 COMMAND_PREFIXES = {
     "cat",
     "docker",
     "docker-compose",
     "env",
+    "echo",
     "export",
     "find",
     "git",
@@ -68,7 +86,16 @@ COMMAND_PREFIXES = {
     "less",
     "more",
     "printenv",
+    "printf",
     "psql",
+    "mysql",
+    "mariadb",
+    "sqlite3",
+    "sqlcmd",
+    "sqlplus",
+    "mongosh",
+    "mongo",
+    "redis-cli",
     "rg",
     "rm",
     "sed",
@@ -95,7 +122,6 @@ CREDENTIAL_PATHS = {
 }
 SECRET_SEARCH_TERMS = ("password", "token", "secret", "api_key", "private_key")
 PROTECTED_RM_TARGETS = {"/", ".", "*", "./*", ".git", "node_modules", "src", "app", "backend", "frontend"}
-SQL_CLIENTS = {"psql", "mysql", "mariadb", "sqlite3", "sqlcmd"}
 PYTHON_SUBPROCESS_CALLS = {"run", "call", "check_call", "check_output", "Popen"}
 SHELL_WRAPPER_NAMES = {"bash", "sh", "zsh"}
 SHELL_OUTPUT_OPERATORS = {"|", ">", ">>", "1>", "2>", "&>"}
@@ -147,6 +173,21 @@ SUDO_VALUE_OPTIONS = {
     "--chroot",
 }
 SUDO_SHORT_VALUE_OPTIONS = frozenset("CDghpTu")
+ENV_FLAG_OPTIONS = {
+    "-0",
+    "--debug",
+    "--ignore-environment",
+    "--null",
+    "-i",
+}
+ENV_VALUE_OPTIONS = {
+    "--chdir",
+    "--split-string",
+    "--unset",
+    "-C",
+    "-S",
+    "-u",
+}
 
 
 def read_input() -> dict[str, Any] | None:
@@ -421,7 +462,7 @@ def should_inspect_command(tool_name: str, command_text: str) -> bool:
 
 
 def iter_command_segments(command_text: str) -> list[str]:
-    return [segment.strip() for segment in re.split(r"(?:&&|\|\||;|\n)", command_text) if segment.strip()]
+    return iter_shell_wrapper_segments(command_text)
 
 
 def tokenize_segment(segment: str) -> list[str]:
@@ -530,11 +571,51 @@ def iter_shell_wrapper_segments(command_text: str) -> list[str]:
     return segments
 
 
+def iter_pipeline_stages(command_segment: str) -> list[str]:
+    stages: list[str] = []
+    start = 0
+    quote = ""
+    escaped = False
+    index = 0
+    while index < len(command_segment):
+        char = command_segment[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if char == "\\" and quote != "'":
+            escaped = True
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            if not quote:
+                quote = char
+            elif quote == char:
+                quote = ""
+            index += 1
+            continue
+        if not quote and char == "|":
+            stage = command_segment[start:index].strip()
+            if stage:
+                stages.append(stage)
+            if index + 1 < len(command_segment) and command_segment[index + 1] == "&":
+                index += 2
+            else:
+                index += 1
+            start = index
+            continue
+        index += 1
+    stage = command_segment[start:].strip()
+    if stage:
+        stages.append(stage)
+    return stages
+
+
 def shell_wrapper_payloads(command_text: str) -> list[str]:
     payloads: list[str] = []
     for segment in iter_shell_wrapper_segments(command_text):
         tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_sudo(tokens)
+        tokens = strip_leading_command_wrappers(tokens)
         payload = shell_wrapper_payload_from_argv(tokens)
         if payload:
             payloads.append(payload)
@@ -627,6 +708,60 @@ def strip_leading_sudo(tokens: list[str]) -> tuple[bool, list[str]]:
     return True, tokens[index:]
 
 
+def is_env_assignment(token: str) -> bool:
+    return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", token))
+
+
+def strip_leading_env(tokens: list[str]) -> tuple[bool, list[str]]:
+    if not tokens or shell_executable_name(tokens[0]) != "env":
+        return False, tokens
+
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            return True, tokens[index + 1 :]
+        if token in ENV_FLAG_OPTIONS:
+            index += 1
+            continue
+        if token in ENV_VALUE_OPTIONS:
+            index += 2
+            continue
+        if token.startswith("--") and "=" in token:
+            option = token.split("=", 1)[0]
+            if option in ENV_VALUE_OPTIONS:
+                index += 1
+                continue
+        if is_env_assignment(token):
+            index += 1
+            continue
+        break
+    return True, tokens[index:]
+
+
+def strip_leading_command_wrappers(tokens: list[str]) -> list[str]:
+    normalized = tokens
+    while normalized:
+        progressed = False
+        while normalized and is_env_assignment(normalized[0]):
+            normalized = normalized[1:]
+            progressed = True
+
+        stripped, sudo_tokens = strip_leading_sudo(normalized)
+        if stripped:
+            normalized = sudo_tokens
+            continue
+
+        stripped, env_tokens = strip_leading_env(normalized)
+        if stripped:
+            normalized = env_tokens
+            continue
+
+        if not progressed:
+            break
+    return normalized
+
+
 def normalize_path(path: str) -> str:
     normalized = path.strip()
     while len(normalized) > 1 and normalized.endswith("/"):
@@ -692,11 +827,19 @@ def detect_secret_file_read(command_text: str) -> str | None:
 
 
 def env_invocation_is_dump(tokens: list[str]) -> bool:
-    rest = tokens[1:]
-    if not rest:
+    if len(tokens) == 1:
         return True
-    for token in rest:
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token in {"-S", "--split-string"}:
+            return index + 1 >= len(tokens)
+        if token.startswith("--split-string="):
+            return False
+        if token.startswith("-S") and token != "-S":
+            return False
         if token.startswith("-"):
+            index += 1
             continue
         return token in SHELL_OUTPUT_OPERATORS or token.startswith(">")
     return True
@@ -873,25 +1016,172 @@ def detect_destructive_git(command_text: str) -> str | None:
     return None
 
 
+def segment_invokes_db_client(tokens: list[str]) -> bool:
+    return bool(tokens and shell_executable_name(tokens[0]) in DB_CLIENTS)
+
+
+def env_split_string_payloads(tokens: list[str]) -> list[str]:
+    if not tokens or shell_executable_name(tokens[0]) != "env":
+        return []
+
+    payloads: list[str] = []
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            break
+        if token in ENV_FLAG_OPTIONS:
+            index += 1
+            continue
+        if token in {"-S", "--split-string"}:
+            if index + 1 < len(tokens):
+                payloads.append(tokens[index + 1])
+            index += 2
+            continue
+        if token.startswith("--split-string="):
+            payloads.append(token.split("=", 1)[1])
+            index += 1
+            continue
+        if token.startswith("-S") and token != "-S":
+            payloads.append(token[2:])
+            index += 1
+            continue
+        if token in ENV_VALUE_OPTIONS:
+            index += 2
+            continue
+        if token.startswith("--") and "=" in token:
+            option = token.split("=", 1)[0]
+            if option in ENV_VALUE_OPTIONS:
+                index += 1
+                continue
+        if is_env_assignment(token):
+            index += 1
+            continue
+        break
+    return [payload for payload in payloads if payload.strip()]
+
+
+def env_split_string_payloads_after_leading_wrappers(tokens: list[str]) -> list[str]:
+    normalized = tokens
+    while normalized:
+        progressed = False
+        while normalized and is_env_assignment(normalized[0]):
+            normalized = normalized[1:]
+            progressed = True
+
+        stripped, sudo_tokens = strip_leading_sudo(normalized)
+        if stripped:
+            normalized = sudo_tokens
+            continue
+
+        payloads = env_split_string_payloads(normalized)
+        if payloads:
+            return payloads
+
+        stripped, env_tokens = strip_leading_env(normalized)
+        if stripped:
+            normalized = env_tokens
+            continue
+
+        if not progressed:
+            break
+    return []
+
+
+def stage_invokes_db_client(tokens: list[str], wrapper_depth: int) -> bool:
+    if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
+        for payload in env_split_string_payloads_after_leading_wrappers(tokens):
+            if detect_db_client_access(payload, wrapper_depth + 1):
+                return True
+
+    normalized = strip_leading_command_wrappers(tokens)
+    if segment_invokes_db_client(normalized):
+        return True
+
+    if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
+        payload = shell_wrapper_payload_from_argv(normalized)
+        if payload and detect_db_client_access(payload, wrapper_depth + 1):
+            return True
+    return False
+
+
+def detect_db_client_access(command_text: str, wrapper_depth: int = 0) -> str | None:
+    for segment in iter_command_segments(command_text):
+        for stage in iter_pipeline_stages(segment):
+            tokens = tokenize_segment(stage)
+            if stage_invokes_db_client(tokens, wrapper_depth):
+                return (
+                    "Direct database client access is not allowed during automatic Harness execution "
+                    "without explicit user approval or project allowlist"
+                )
+    return None
+
+
 def segment_starts_sql(segment: str) -> bool:
-    return bool(re.match(r"^\s*(drop\s+(?:table|database)|truncate\b|delete\s+from\b)", segment, re.IGNORECASE))
+    return bool(
+        re.match(
+            rf"""
+            ^\s*(?:
+                drop\s+(?:table|database|schema|index|view|sequence)\b
+                | truncate\b
+                | alter\s+(?:table|database|schema|index|view|sequence)\b
+                | create\s+(?:table|database|schema|index|view|sequence)\b
+                | insert\s+into\b
+                | update\s+{SQL_QUALIFIED_IDENTIFIER}\s+set\b
+                | delete\s+from\b
+                | merge\s+into\b
+                | replace\s+into\b
+                | {SQL_PRIVILEGE_STATEMENT}
+                | {SQL_PROCEDURE_STATEMENT}
+            )
+            """,
+            segment,
+            re.IGNORECASE | re.VERBOSE,
+        )
+    )
 
 
 def segment_invokes_sql_client(tokens: list[str]) -> bool:
-    return bool(tokens and tokens[0].lower() in SQL_CLIENTS)
+    return bool(tokens and shell_executable_name(tokens[0]) in SQL_CLIENTS)
+
+
+def segment_sql_text_payload(tokens: list[str]) -> str:
+    if not tokens or shell_executable_name(tokens[0]) not in SQL_TEXT_COMMANDS:
+        return ""
+    command = shell_executable_name(tokens[0])
+    if command == "echo":
+        index = 1
+        while index < len(tokens) and tokens[index] in {"-E", "-e", "-n"}:
+            index += 1
+        return " ".join(tokens[index:])
+    if command == "printf":
+        if len(tokens) <= 2:
+            return " ".join(tokens[1:])
+        return " ".join(tokens[2:])
+    return ""
 
 
 def destructive_sql_category(segment: str) -> str | None:
-    if re.search(r"\bdrop\s+table\b", segment, re.IGNORECASE):
+    if re.search(r"\bdrop\s+(?:table|database|schema|index|view|sequence)\b", segment, re.IGNORECASE):
         return "Schema-dropping SQL should not run automatically"
-    if re.search(r"\bdrop\s+database\b", segment, re.IGNORECASE):
-        return "Database-dropping SQL should not run automatically"
     if re.search(r"\btruncate\b", segment, re.IGNORECASE):
         return "Truncating tables should not run automatically"
-    if re.search(r"\bdelete\s+from\s+[A-Za-z0-9_.\"`]+", segment, re.IGNORECASE) and not re.search(
-        r"\bwhere\b", segment, re.IGNORECASE
-    ):
-        return "DELETE statements without WHERE can remove entire tables"
+    if re.search(r"\balter\s+(?:table|database|schema|index|view|sequence)\b", segment, re.IGNORECASE):
+        return "Schema-altering SQL should not run automatically"
+    if re.search(r"\bcreate\s+(?:table|database|schema|index|view|sequence)\b", segment, re.IGNORECASE):
+        return "Schema-creating SQL should not run automatically"
+    if re.search(r"\binsert\s+into\b", segment, re.IGNORECASE):
+        return "Data-inserting SQL should not run automatically"
+    if re.search(rf"\bupdate\s+{SQL_QUALIFIED_IDENTIFIER}\s+set\b", segment, re.IGNORECASE):
+        return "Data-updating SQL should not run automatically"
+    if re.search(rf"\bdelete\s+from\s+{SQL_QUALIFIED_IDENTIFIER}(?=\s|;|$)", segment, re.IGNORECASE):
+        return "Data-deleting SQL should not run automatically"
+    if re.search(r"\b(?:merge|replace)\s+into\b", segment, re.IGNORECASE):
+        return "Data-mutating SQL should not run automatically"
+    if re.search(rf"^\s*{SQL_PRIVILEGE_STATEMENT}", segment, re.IGNORECASE | re.VERBOSE):
+        return "Privilege-changing SQL should not run automatically"
+    if re.search(rf"^\s*{SQL_PROCEDURE_STATEMENT}", segment, re.IGNORECASE | re.VERBOSE):
+        return "Procedure execution SQL should not run automatically"
     return None
 
 
@@ -899,7 +1189,17 @@ def detect_destructive_sql(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
         _, tokens = strip_leading_sudo(tokens)
-        if not segment_invokes_sql_client(tokens) and not segment_starts_sql(segment):
+        sql_text_payload = segment_sql_text_payload(tokens)
+        if sql_text_payload:
+            if segment_starts_sql(sql_text_payload):
+                explanation = destructive_sql_category(sql_text_payload)
+                if explanation:
+                    return explanation
+            continue
+        if (
+            not segment_invokes_sql_client(tokens)
+            and not segment_starts_sql(segment)
+        ):
             continue
         explanation = destructive_sql_category(segment)
         if explanation:
@@ -964,6 +1264,7 @@ def dangerous_command_category(command_text: str, wrapper_depth: int = 0) -> tup
         ("secret_file_read", detect_secret_file_read),
         ("environment_dump", detect_environment_dump),
         ("recursive_secret_search", detect_recursive_secret_search),
+        ("db_client_access", detect_db_client_access),
         ("broad_destructive_delete", detect_broad_destructive_delete),
         ("destructive_git", detect_destructive_git),
         ("destructive_sql", detect_destructive_sql),
