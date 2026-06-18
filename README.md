@@ -88,6 +88,20 @@ When a task fits multiple categories, Harness chooses the higher-risk category.
 - **Implementer:** changes only the accepted files and areas, runs targeted verification, reports changed files, deviations, blocked checks, and risk areas, then stops on scope drift.
 - **Reviewer:** runs clean-context read-only Review against the accepted Plan and looks for bugs, missing tests, contract drift, security issues, performance risk, scope creep, and rule violations.
 
+## 🧩 Subagent Policy
+
+`Tiny` work may be handled by the main agent. `Small` and `Non-trivial` work require actual planner, implementer, and reviewer subagents when tooling allows it.
+
+- `Small`: one planner, one domain implementer, and one reviewer.
+- `Non-trivial`: one planner, one or more domain implementers, and one reviewer.
+- Large or high-risk work defaults to a maximum of four subagents unless the user approves more.
+- Explicit `$harness` invocation preauthorizes only the required planner, implementer, and reviewer subagents. It does not approve destructive commands, secret access, deployment, production-impact work, external network calls, privileged access, or broad rewrites outside the accepted Plan.
+- Every subagent receives a bounded brief with objective, role/domain, scope, allowed files or areas, constraints, prohibited actions, required evidence, output format, and stop conditions.
+- Default subagent permission is read-only. Only implementers may receive write permission, and only inside the accepted scope.
+- Subagent output is evidence; the orchestrator remains responsible for final integration, conflict resolution, verification, and Completion.
+- Review is complete only when a clean-context read-only reviewer subagent completes it. Main-agent inspection is not Review.
+- If a required subagent cannot complete, Harness records the affected role or gate as `blocked_degraded`. If Review cannot run through the reviewer subagent, the Review status is `review_blocked_degraded`.
+
 ## 🛡️ Hooks and Guardrails
 
 Harness includes hook configuration for `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `SubagentStop`, and `Stop`.
@@ -107,7 +121,15 @@ The prompt hook currently checks for the `$harness` token or substring anywhere 
 
 ## 🧠 Reasoning Effort
 
-Harness requires high reasoning effort or above. Implement and Review require `xhigh` when available. If `xhigh` is unavailable, Harness records the fallback or degraded state according to policy.
+Harness reasoning effort is part of the workflow contract.
+
+- Harness minimum reasoning effort is `high`.
+- Planner, Orchestrator, and Improvement use `high` or above.
+- Implementer and Reviewer use `xhigh` when available.
+- `medium`, `low`, and `minimal` are not valid for Harness workflow roles.
+- If `xhigh` is unsupported, Harness falls back to `high`.
+- Harness prefers switching to an `xhigh`-capable Codex model before accepting fallback.
+- If neither `xhigh` nor a safe fallback path is available, Harness records `blocked_degraded`, records `review_blocked_degraded` for Review, or asks for user approval before continuing.
 
 ## 📚 More Docs
 
