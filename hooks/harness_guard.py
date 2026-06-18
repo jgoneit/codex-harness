@@ -99,6 +99,54 @@ SQL_CLIENTS = {"psql", "mysql", "mariadb", "sqlite3", "sqlcmd"}
 PYTHON_SUBPROCESS_CALLS = {"run", "call", "check_call", "check_output", "Popen"}
 SHELL_WRAPPER_NAMES = {"bash", "sh", "zsh"}
 SHELL_OUTPUT_OPERATORS = {"|", ">", ">>", "1>", "2>", "&>"}
+MAX_SHELL_WRAPPER_DEPTH = 3
+SUDO_FLAG_OPTIONS = {
+    "-A",
+    "--askpass",
+    "-b",
+    "--background",
+    "-E",
+    "--preserve-env",
+    "-e",
+    "--edit",
+    "-H",
+    "--set-home",
+    "-i",
+    "--login",
+    "-k",
+    "--reset-timestamp",
+    "-K",
+    "--remove-timestamp",
+    "-l",
+    "--list",
+    "-n",
+    "--non-interactive",
+    "-S",
+    "--stdin",
+    "-s",
+    "--shell",
+    "-v",
+    "--validate",
+}
+SUDO_SHORT_FLAG_CHARS = frozenset("AbEeHikKlnSsv")
+SUDO_VALUE_OPTIONS = {
+    "-C",
+    "--close-from",
+    "-D",
+    "--chdir",
+    "-g",
+    "--group",
+    "-h",
+    "--host",
+    "-p",
+    "--prompt",
+    "-T",
+    "--command-timeout",
+    "-u",
+    "--user",
+    "--chroot",
+}
+SUDO_SHORT_VALUE_OPTIONS = frozenset("CDghpTu")
 
 
 def read_input() -> dict[str, Any] | None:
@@ -306,7 +354,7 @@ def string_fragment(value: Any) -> str:
     if isinstance(value, str):
         return value
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
-        return " ".join(value)
+        return shlex.join(value)
     return ""
 
 
@@ -354,7 +402,7 @@ def command_looks_like_shell(command_text: str) -> bool:
         if not tokens:
             continue
         command = tokens[0].lower()
-        if command in COMMAND_PREFIXES:
+        if command in COMMAND_PREFIXES or shell_executable_name(command) in SHELL_WRAPPER_NAMES:
             return True
     return False
 
@@ -437,6 +485,62 @@ def shell_wrapper_payload_from_argv(argv: list[str]) -> str:
     return ""
 
 
+def iter_shell_wrapper_segments(command_text: str) -> list[str]:
+    segments: list[str] = []
+    start = 0
+    quote = ""
+    escaped = False
+    index = 0
+    while index < len(command_text):
+        char = command_text[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if char == "\\" and quote != "'":
+            escaped = True
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            if not quote:
+                quote = char
+            elif quote == char:
+                quote = ""
+            index += 1
+            continue
+        if not quote:
+            if command_text.startswith(("&&", "||"), index):
+                segment = command_text[start:index].strip()
+                if segment:
+                    segments.append(segment)
+                index += 2
+                start = index
+                continue
+            if char in {";", "\n"}:
+                segment = command_text[start:index].strip()
+                if segment:
+                    segments.append(segment)
+                index += 1
+                start = index
+                continue
+        index += 1
+    segment = command_text[start:].strip()
+    if segment:
+        segments.append(segment)
+    return segments
+
+
+def shell_wrapper_payloads(command_text: str) -> list[str]:
+    payloads: list[str] = []
+    for segment in iter_shell_wrapper_segments(command_text):
+        tokens = tokenize_segment(segment)
+        _, tokens = strip_leading_sudo(tokens)
+        payload = shell_wrapper_payload_from_argv(tokens)
+        if payload:
+            payloads.append(payload)
+    return payloads
+
+
 def literal_shell_command(node: ast.expr) -> str:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
@@ -480,9 +584,47 @@ def extract_python_shell_commands(command_text: str) -> list[str]:
 
 
 def strip_leading_sudo(tokens: list[str]) -> tuple[bool, list[str]]:
-    if tokens and tokens[0].lower() == "sudo":
-        return True, tokens[1:]
-    return False, tokens
+    if not tokens or tokens[0].lower() != "sudo":
+        return False, tokens
+
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            return True, tokens[index + 1 :]
+        if token in SUDO_FLAG_OPTIONS:
+            index += 1
+            continue
+        if token in SUDO_VALUE_OPTIONS:
+            index += 2
+            continue
+        if token.startswith("--") and "=" in token:
+            option = token.split("=", 1)[0]
+            if option in SUDO_FLAG_OPTIONS or option in SUDO_VALUE_OPTIONS:
+                index += 1
+                continue
+        if token.startswith("-") and not token.startswith("--") and len(token) > 2:
+            cluster = token[1:]
+            consumed_cluster = False
+            for offset, option in enumerate(cluster):
+                # A value-taking short option consumes the attached remainder or next token.
+                if option in SUDO_SHORT_FLAG_CHARS:
+                    continue
+                if option in SUDO_SHORT_VALUE_OPTIONS:
+                    if offset == len(cluster) - 1:
+                        index += 2
+                    else:
+                        index += 1
+                    consumed_cluster = True
+                    break
+                break
+            else:
+                index += 1
+                continue
+            if consumed_cluster:
+                continue
+        break
+    return True, tokens[index:]
 
 
 def normalize_path(path: str) -> str:
@@ -523,8 +665,14 @@ def detect_credential_exfiltration(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
         _, tokens = strip_leading_sudo(tokens)
-        if tokens and tokens[0].lower() == "cat" and any(is_credential_path(token) for token in tokens[1:]):
+        if not tokens:
+            continue
+        command = tokens[0].lower()
+        if command in READ_COMMANDS and any(is_credential_path(token) for token in tokens[1:]):
             return "Credential store files should not be printed from hook-run shell commands"
+        if command == "sed" and has_sed_print_suppression(tokens):
+            if any(is_credential_path(token) for token in tokens[1:] if not token.startswith("-")):
+                return "Credential store files should not be printed from hook-run shell commands"
     return None
 
 
@@ -795,7 +943,9 @@ def detect_production_impact(command_text: str) -> str | None:
         if command == "terraform":
             if len(tokens) >= 2 and tokens[1].lower() == "destroy":
                 return "Terraform destroy can remove infrastructure"
-            if len(tokens) >= 2 and tokens[1].lower() == "apply" and "-auto-approve" in tokens[2:]:
+            if len(tokens) >= 2 and tokens[1].lower() == "apply" and any(
+                token in {"-auto-approve", "--auto-approve"} for token in tokens[2:]
+            ):
                 return "Terraform auto-approved apply changes infrastructure without review"
         if command == "docker" and len(tokens) >= 4 and tokens[1].lower() == "compose" and tokens[2].lower() == "down":
             if any(token in {"-v", "--volumes"} for token in tokens[3:]):
@@ -808,7 +958,7 @@ def detect_production_impact(command_text: str) -> str | None:
     return None
 
 
-def dangerous_command_category(command_text: str) -> tuple[str, str] | None:
+def dangerous_command_category(command_text: str, wrapper_depth: int = 0) -> tuple[str, str] | None:
     detectors = (
         ("credential_exfiltration", detect_credential_exfiltration),
         ("secret_file_read", detect_secret_file_read),
@@ -823,6 +973,11 @@ def dangerous_command_category(command_text: str) -> tuple[str, str] | None:
         explanation = detector(command_text)
         if explanation:
             return category, explanation
+    if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
+        for payload in shell_wrapper_payloads(command_text):
+            dangerous = dangerous_command_category(payload, wrapper_depth + 1)
+            if dangerous:
+                return dangerous
     return None
 
 
