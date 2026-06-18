@@ -1,0 +1,70 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'exit 0'",
+            "commandWindows": "cmd /c exit 0",
+            "timeout": 5,
+            "statusMessage": "Harness lifecycle hook visible"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/harness_guard.py\" UserPromptSubmit",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\hooks\\harness_guard.py\" UserPromptSubmit",
+            "timeout": 10,
+            "statusMessage": "Harness prompt policy check"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/harness_guard.py\" PreToolUse",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\hooks\\harness_guard.py\" PreToolUse",
+            "timeout": 10,
+            "statusMessage": "Harness dangerous command guardrail"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/harness_guard.py\" SubagentStop",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\hooks\\harness_guard.py\" SubagentStop",
+            "timeout": 10,
+            "statusMessage": "Harness subagent output check"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$PLUGIN_ROOT/hooks/harness_guard.py\" Stop",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\hooks\\harness_guard.py\" Stop",
+            "timeout": 10,
+            "statusMessage": "Harness workflow structure check"
+          }
+        ]
+      }
+    ]
+  }
+}
