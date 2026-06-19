@@ -45,7 +45,7 @@ Read the relevant references before acting:
 Proceed with this Plan? [y/N]
 ```
 
-- Only lowercase `y` approves execution of the accepted Plan. `n`, empty response, ambiguous natural language, uppercase variants, expanded variants, and any non-`y` response are not approval; `[y/N]` means No is the default. If ambiguous, ask again for explicit `y` or `n`.
+- Only lowercase `y` approves execution of the accepted Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not implement, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
 - Do not repair before Repair Plan approval.
 - The Repair Plan approval prompt must be exactly:
 
@@ -53,7 +53,7 @@ Proceed with this Plan? [y/N]
 Proceed with this Repair Plan? [y/N]
 ```
 
-- Only lowercase `y` approves execution of the accepted Repair Plan. `n`, empty response, ambiguous natural language, uppercase variants, expanded variants, and any non-`y` response are not approval; `[y/N]` means No is the default. If ambiguous, ask again for explicit `y` or `n`.
+- Only lowercase `y` approves execution of the accepted Repair Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not repair, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
 - Only a clean-context read-only reviewer subagent can complete Review.
 - Main-agent self-review is not Review.
 - Required gate failure must be recorded as `blocked_degraded` or escalated.
@@ -66,10 +66,10 @@ Proceed with this Repair Plan? [y/N]
 2. Classify the task as `Tiny`, `Small`, or `Non-trivial`.
 3. For `Small` or larger tasks, define subagent topology.
 4. Produce a Plan artifact and ask for Plan approval.
-5. If the user replies exactly `y`, implement only the accepted Plan; otherwise do not implement.
+5. If the user replies exactly `y`, implement only the accepted Plan; otherwise stop unless the user explicitly asks to revise/replan.
 6. For `Small` or larger tasks, run clean-context read-only reviewer Review.
 7. If Review has findings, produce a Repair Plan and ask for repair approval.
-8. If the user replies exactly `y`, implement only the accepted Repair Plan and repeat the bounded Review/Repair loop if required.
+8. If the user replies exactly `y`, implement only the accepted Repair Plan and repeat the bounded Review/Repair loop if required; otherwise stop unless the user explicitly asks to revise/replan.
 9. Produce the Completion report with status, verification, risks, and follow-ups.
 
 ## Hooks

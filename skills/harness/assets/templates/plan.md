@@ -78,7 +78,7 @@
 
 - Acceptance source:
 - Approval prompt: `Proceed with this Plan? [y/N]`
-- Approval semantics: only lowercase `y` approves execution of the accepted Plan; `n`, empty response, ambiguous natural language, uppercase variants, expanded variants, and any non-`y` response are not approval; `[y/N]` means No is the default; if ambiguous, ask again for explicit `y` or `n`.
+- Approval semantics: only lowercase `y` approves execution of the accepted Plan; ambiguous natural language means no decision and requires asking again for explicit `y` or `n`; non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default and does not trigger implementation, revision, or replanning unless the user explicitly asks to revise/replan; `[y/N]` means No is the default.
 - User response: y / n / non-y / pending
 - Approval or revision request:
 - Revised Plan count:

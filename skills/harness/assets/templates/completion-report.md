@@ -36,8 +36,8 @@
 - Role/domain assignment:
 - Policy preauthorization used? Yes/No:
 - Explicit approvals requested:
-- Plan approval response: y / n revisions / blocked
-- Repair Plan approval response: y / n revisions / not required / blocked
+- Plan approval response: y / non-y stopped / explicit revision or replan requested / blocked
+- Repair Plan approval response: y / non-y stopped / explicit revision or replan requested / not required / blocked
 - Blocked_degraded roles:
 - Integration conflicts:
 - Conflict resolution:
