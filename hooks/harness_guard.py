@@ -618,6 +618,99 @@ def iter_pipeline_stages(command_segment: str) -> list[str]:
     return stages
 
 
+def command_substitution_payload(command_text: str, payload_start: int) -> tuple[str, int]:
+    depth = 1
+    quote = ""
+    escaped = False
+    index = payload_start
+    while index < len(command_text):
+        char = command_text[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if char == "\\" and quote != "'":
+            escaped = True
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            if not quote:
+                quote = char
+            elif quote == char:
+                quote = ""
+            index += 1
+            continue
+        if not quote:
+            if command_text.startswith("$(", index):
+                depth += 1
+                index += 2
+                continue
+            if char == "(":
+                depth += 1
+                index += 1
+                continue
+            if char == ")":
+                depth -= 1
+                if depth == 0:
+                    return command_text[payload_start:index], index + 1
+        index += 1
+    return "", len(command_text)
+
+
+def iter_command_substitution_payloads(command_text: str) -> list[str]:
+    payloads: list[str] = []
+    quote = ""
+    escaped = False
+    index = 0
+    while index < len(command_text):
+        char = command_text[index]
+        if escaped:
+            escaped = False
+            index += 1
+            continue
+        if char == "\\" and quote != "'":
+            escaped = True
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            if not quote:
+                quote = char
+            elif quote == char:
+                quote = ""
+            index += 1
+            continue
+        if quote != "'" and command_text.startswith("$(", index):
+            payload, next_index = command_substitution_payload(command_text, index + 2)
+            if payload.strip():
+                payloads.append(payload)
+            index = next_index
+            continue
+        if quote != "'" and char == "`":
+            start = index + 1
+            index = start
+            escaped_backtick = False
+            while index < len(command_text):
+                current = command_text[index]
+                if escaped_backtick:
+                    escaped_backtick = False
+                    index += 1
+                    continue
+                if current == "\\":
+                    escaped_backtick = True
+                    index += 1
+                    continue
+                if current == "`":
+                    payload = command_text[start:index]
+                    if payload.strip():
+                        payloads.append(payload)
+                    index += 1
+                    break
+                index += 1
+            continue
+        index += 1
+    return payloads
+
+
 def shell_wrapper_payloads(command_text: str) -> list[str]:
     payloads: list[str] = []
     for segment in iter_shell_wrapper_segments(command_text):
@@ -1282,6 +1375,16 @@ def dangerous_command_category(command_text: str, wrapper_depth: int = 0) -> tup
         if explanation:
             return category, explanation
     if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
+        for payload in iter_command_substitution_payloads(command_text):
+            dangerous = dangerous_command_category(payload, wrapper_depth + 1)
+            if dangerous:
+                return dangerous
+        for segment in iter_command_segments(command_text):
+            tokens = tokenize_segment(segment)
+            for payload in env_split_string_payloads_after_leading_wrappers(tokens):
+                dangerous = dangerous_command_category(payload, wrapper_depth + 1)
+                if dangerous:
+                    return dangerous
         for payload in shell_wrapper_payloads(command_text):
             dangerous = dangerous_command_category(payload, wrapper_depth + 1)
             if dangerous:
