@@ -58,6 +58,13 @@ NOSQL_CLIENTS = {"mongosh", "mongo", "redis-cli"}
 DB_CLIENTS = SQL_CLIENTS | NOSQL_CLIENTS
 SQL_IDENTIFIER = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"[^"]+"|`[^`]+`|\[[^\]]+\])'
 SQL_QUALIFIED_IDENTIFIER = rf"{SQL_IDENTIFIER}(?:\s*\.\s*{SQL_IDENTIFIER})*"
+SQL_SCHEMA_OBJECT = (
+    r"(?:table|database|schema|index|view|sequence"
+    r"|function|procedure|materialized\s+view|trigger|type)"
+)
+SQL_DROP_STATEMENT = rf"drop\s+{SQL_SCHEMA_OBJECT}\b"
+SQL_ALTER_STATEMENT = rf"alter\s+{SQL_SCHEMA_OBJECT}\b"
+SQL_CREATE_STATEMENT = rf"create\s+(?:or\s+(?:replace|alter)\s+)?{SQL_SCHEMA_OBJECT}\b"
 SQL_PRIVILEGE_STATEMENT = (
     r"(?:grant\s+.+?\s+to\b"
     r"|revoke\s+.+?\s+from\b)"
@@ -1122,10 +1129,10 @@ def segment_starts_sql(segment: str) -> bool:
         re.match(
             rf"""
             ^\s*(?:
-                drop\s+(?:table|database|schema|index|view|sequence)\b
+                {SQL_DROP_STATEMENT}
                 | truncate\b
-                | alter\s+(?:table|database|schema|index|view|sequence)\b
-                | create\s+(?:table|database|schema|index|view|sequence)\b
+                | {SQL_ALTER_STATEMENT}
+                | {SQL_CREATE_STATEMENT}
                 | insert\s+into\b
                 | update\s+{SQL_QUALIFIED_IDENTIFIER}\s+set\b
                 | delete\s+from\b
@@ -1162,13 +1169,13 @@ def segment_sql_text_payload(tokens: list[str]) -> str:
 
 
 def destructive_sql_category(segment: str) -> str | None:
-    if re.search(r"\bdrop\s+(?:table|database|schema|index|view|sequence)\b", segment, re.IGNORECASE):
+    if re.search(rf"\b{SQL_DROP_STATEMENT}", segment, re.IGNORECASE):
         return "Schema-dropping SQL should not run automatically"
     if re.search(r"\btruncate\b", segment, re.IGNORECASE):
         return "Truncating tables should not run automatically"
-    if re.search(r"\balter\s+(?:table|database|schema|index|view|sequence)\b", segment, re.IGNORECASE):
+    if re.search(rf"\b{SQL_ALTER_STATEMENT}", segment, re.IGNORECASE):
         return "Schema-altering SQL should not run automatically"
-    if re.search(r"\bcreate\s+(?:table|database|schema|index|view|sequence)\b", segment, re.IGNORECASE):
+    if re.search(rf"\b{SQL_CREATE_STATEMENT}", segment, re.IGNORECASE):
         return "Schema-creating SQL should not run automatically"
     if re.search(r"\binsert\s+into\b", segment, re.IGNORECASE):
         return "Data-inserting SQL should not run automatically"

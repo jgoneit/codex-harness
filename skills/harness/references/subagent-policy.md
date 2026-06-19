@@ -6,7 +6,7 @@
 - `Small` and larger tasks require planner, implementer, and reviewer subagents.
 - Explicit `$harness` invocation is policy preauthorization for creating planner, implementer, and reviewer subagents only.
 - Policy preauthorization is not approval for destructive commands, secret access, production-impact work, deployment, external network calls, privileged access, or broad rewrites outside the accepted Plan.
-- Implementation and repair still require exact `[y/N]` approval gates. Only lowercase `y` approves execution; `n`, empty response, ambiguous natural language, uppercase variants, expanded variants, and any non-`y` response are not approval. If ambiguous, ask again for explicit `y` or `n`.
+- Implementation and repair still require exact `[y/N]` approval gates. Only lowercase `y` approves execution. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not implement, repair, revise, or replan unless the user explicitly asks to revise/replan.
 - Every subagent receives a bounded brief.
 - Subagent output is evidence; final judgment and integration remain orchestrator responsibility.
 

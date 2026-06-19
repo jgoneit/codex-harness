@@ -25,7 +25,7 @@ Bundled hooks are minimal non-destructive validators. They support discovery, li
 - `Stop`: validate Plan, Repair Plan, and Completion report structure.
 - `PreToolUse`: block obvious dangerous shell-like commands, including secret-file reads, environment dumps, broad destructive deletion, destructive Git operations, direct DB client access, destructive SQL, production-impact commands, and credential exfiltration.
 - DB client coverage blocks direct invocation of common SQL and NoSQL clients during automatic execution: `psql`, `mysql`, `mariadb`, `sqlite3`, `sqlcmd`, `sqlplus`, `mongosh`, `mongo`, and `redis-cli`.
-- SQL mutation coverage blocks obvious write, schema, privilege, and procedure operations: `DROP`, `TRUNCATE`, `ALTER`, `CREATE`, `INSERT INTO`, `UPDATE ... SET`, `DELETE FROM`, `MERGE INTO`, `REPLACE INTO`, `GRANT`, `REVOKE`, `CALL`, `EXEC`, and `EXECUTE`.
+- SQL mutation coverage blocks obvious write, schema, privilege, and procedure operations: `DROP`, `TRUNCATE`, `ALTER`, `CREATE`, `INSERT INTO`, `UPDATE ... SET`, `DELETE FROM`, `MERGE INTO`, `REPLACE INTO`, `GRANT`, `REVOKE`, `CALL`, `EXEC`, and `EXECUTE`, including common schema/procedure objects such as functions, procedures, materialized views, triggers, and types.
 
 ## Out of Scope
 

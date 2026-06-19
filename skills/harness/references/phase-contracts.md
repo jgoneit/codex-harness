@@ -18,7 +18,7 @@ Plan output must include classification, requirements, current state, constraint
 Proceed with this Plan? [y/N]
 ```
 
-Only lowercase `y` approves execution of the accepted Plan. `n`, empty response, ambiguous natural language, uppercase variants, expanded variants, and any non-`y` response are not approval. `[y/N]` means No is the default. If ambiguous, ask again for explicit `y` or `n`.
+Only lowercase `y` approves execution of the accepted Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not implement, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
 
 ## Implement
 
@@ -51,11 +51,11 @@ Repair Plan output must include fix scope, expected files, verification, out-of-
 Proceed with this Repair Plan? [y/N]
 ```
 
-Only lowercase `y` approves execution of the accepted Repair Plan. `n`, empty response, ambiguous natural language, uppercase variants, expanded variants, and any non-`y` response are not approval. `[y/N]` means No is the default. If ambiguous, ask again for explicit `y` or `n`.
+Only lowercase `y` approves execution of the accepted Repair Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not repair, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
 
 ## Repair Implement
 
-Implement only the accepted Repair Plan. If repair reveals new risk, scope expansion, or unresolved conflict, stop and revise the Repair Plan or start a new Plan loop.
+Implement only the accepted Repair Plan. If repair reveals new risk, scope expansion, or unresolved conflict, stop and revise the Repair Plan or start a new Plan loop only when requested or required by a newly approved gate.
 
 ## Completion
 
