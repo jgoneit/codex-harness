@@ -56,6 +56,7 @@ SHELL_TOOL_NAME_PARTS = ("bash", "shell", "terminal", "exec")
 SQL_CLIENTS = {"psql", "mysql", "mariadb", "sqlite3", "sqlcmd", "sqlplus"}
 NOSQL_CLIENTS = {"mongosh", "mongo", "redis-cli"}
 DB_CLIENTS = SQL_CLIENTS | NOSQL_CLIENTS
+DB_CLIENT_INFORMATION_CLIENTS = {"psql", "mysql", "redis-cli", "sqlplus"}
 DB_CLIENT_INFORMATION_ARGS = {"--version", "-V", "--help"}
 SQL_IDENTIFIER = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"[^"]+"|`[^`]+`|\[[^\]]+\])'
 SQL_QUALIFIED_IDENTIFIER = rf"{SQL_IDENTIFIER}(?:\s*\.\s*{SQL_IDENTIFIER})*"
@@ -1144,8 +1145,13 @@ def segment_invokes_db_client(tokens: list[str]) -> bool:
 def db_client_access_requires_approval(tokens: list[str]) -> bool:
     if not segment_invokes_db_client(tokens):
         return False
+    command = shell_executable_name(tokens[0])
     args = tokens[1:]
-    if args and all(arg in DB_CLIENT_INFORMATION_ARGS for arg in args):
+    if (
+        command in DB_CLIENT_INFORMATION_CLIENTS
+        and args
+        and all(arg in DB_CLIENT_INFORMATION_ARGS for arg in args)
+    ):
         return False
     return True
 

@@ -49,6 +49,7 @@ BLOCK_CASES = [
     ("psql", DEFAULT_TOOL, BLOCK, "direct SQL client access"),
     ("sqlplus /", DEFAULT_TOOL, BLOCK, "direct SQL client access"),
     ("redis-cli", DEFAULT_TOOL, BLOCK, "direct NoSQL client access"),
+    ("sqlite3 --version", DEFAULT_TOOL, BLOCK, "non-target DB client info flag still blocked"),
     ("psql -c 'DROP TABLE t'", DEFAULT_TOOL, BLOCK, "destructive SQL through psql"),
     ("psql -c 'TRUNCATE t'", DEFAULT_TOOL, BLOCK, "destructive SQL through psql"),
     ("psql -c 'DELETE FROM users'", DEFAULT_TOOL, BLOCK, "destructive SQL through psql"),
