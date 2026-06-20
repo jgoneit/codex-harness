@@ -43,6 +43,21 @@ class HarnessGuardParsingTests(unittest.TestCase):
             with self.subTest(tokens=tokens):
                 self.assertEqual(harness_guard.strip_leading_command_wrappers(tokens), expected)
 
+    def test_strip_leading_env_assignments_and_sudo_preserves_env_binary(self) -> None:
+        cases = [
+            (["FOO=1", "rm", "-rf", ".git"], (False, ["rm", "-rf", ".git"])),
+            (["FOO=1", "sudo", "-E", "git", "reset", "--hard"], (True, ["git", "reset", "--hard"])),
+            (["FOO=1", "env"], (False, ["env"])),
+            (["sudo", "FOO=1", "env"], (True, ["env"])),
+        ]
+
+        for tokens, expected in cases:
+            with self.subTest(tokens=tokens):
+                self.assertEqual(
+                    harness_guard.strip_leading_env_assignments_and_sudo(tokens),
+                    expected,
+                )
+
     def test_command_substitution_payload(self) -> None:
         command = "echo $(cat .env) tail"
         payload_start = command.index("$(") + 2

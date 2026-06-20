@@ -56,6 +56,7 @@ SHELL_TOOL_NAME_PARTS = ("bash", "shell", "terminal", "exec")
 SQL_CLIENTS = {"psql", "mysql", "mariadb", "sqlite3", "sqlcmd", "sqlplus"}
 NOSQL_CLIENTS = {"mongosh", "mongo", "redis-cli"}
 DB_CLIENTS = SQL_CLIENTS | NOSQL_CLIENTS
+DB_CLIENT_INFORMATION_ARGS = {"--version", "-V", "--help"}
 SQL_IDENTIFIER = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"[^"]+"|`[^`]+`|\[[^\]]+\])'
 SQL_QUALIFIED_IDENTIFIER = rf"{SQL_IDENTIFIER}(?:\s*\.\s*{SQL_IDENTIFIER})*"
 SQL_SCHEMA_OBJECT = (
@@ -862,6 +863,26 @@ def strip_leading_command_wrappers(tokens: list[str]) -> list[str]:
     return normalized
 
 
+def strip_leading_env_assignments_and_sudo(tokens: list[str]) -> tuple[bool, list[str]]:
+    normalized = tokens
+    used_sudo = False
+    while normalized:
+        progressed = False
+        while normalized and is_env_assignment(normalized[0]):
+            normalized = normalized[1:]
+            progressed = True
+
+        stripped, sudo_tokens = strip_leading_sudo(normalized)
+        if stripped:
+            used_sudo = True
+            normalized = sudo_tokens
+            continue
+
+        if not progressed:
+            break
+    return used_sudo, normalized
+
+
 def normalize_path(path: str) -> str:
     normalized = path.strip()
     while len(normalized) > 1 and normalized.endswith("/"):
@@ -899,7 +920,7 @@ def has_sed_print_suppression(tokens: list[str]) -> bool:
 def detect_credential_exfiltration(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_sudo(tokens)
+        _, tokens = strip_leading_env_assignments_and_sudo(tokens)
         if not tokens:
             continue
         command = tokens[0].lower()
@@ -914,7 +935,7 @@ def detect_credential_exfiltration(command_text: str) -> str | None:
 def detect_secret_file_read(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_sudo(tokens)
+        _, tokens = strip_leading_env_assignments_and_sudo(tokens)
         if not tokens:
             continue
         command = tokens[0].lower()
@@ -948,7 +969,7 @@ def env_invocation_is_dump(tokens: list[str]) -> bool:
 def detect_environment_dump(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_sudo(tokens)
+        _, tokens = strip_leading_env_assignments_and_sudo(tokens)
         if not tokens:
             continue
         command = tokens[0].lower()
@@ -1016,7 +1037,7 @@ def rg_patterns(tokens: list[str]) -> list[str]:
 def detect_recursive_secret_search(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_sudo(tokens)
+        _, tokens = strip_leading_env_assignments_and_sudo(tokens)
         if not tokens:
             continue
         command = tokens[0].lower()
@@ -1060,7 +1081,7 @@ def find_path_is_dot(tokens: list[str]) -> bool:
 def detect_broad_destructive_delete(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
-        used_sudo, tokens = strip_leading_sudo(tokens)
+        used_sudo, tokens = strip_leading_env_assignments_and_sudo(tokens)
         if not tokens:
             continue
         command = tokens[0].lower()
@@ -1099,7 +1120,7 @@ def git_clean_is_destructive(tokens: list[str]) -> bool:
 def detect_destructive_git(command_text: str) -> str | None:
     for segment in iter_command_segments(command_text):
         tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_sudo(tokens)
+        _, tokens = strip_leading_env_assignments_and_sudo(tokens)
         if len(tokens) < 2 or tokens[0].lower() != "git":
             continue
         command = tokens[1].lower()
@@ -1118,6 +1139,15 @@ def detect_destructive_git(command_text: str) -> str | None:
 
 def segment_invokes_db_client(tokens: list[str]) -> bool:
     return bool(tokens and shell_executable_name(tokens[0]) in DB_CLIENTS)
+
+
+def db_client_access_requires_approval(tokens: list[str]) -> bool:
+    if not segment_invokes_db_client(tokens):
+        return False
+    args = tokens[1:]
+    if args and all(arg in DB_CLIENT_INFORMATION_ARGS for arg in args):
+        return False
+    return True
 
 
 def env_split_string_payloads(tokens: list[str]) -> list[str]:
@@ -1195,7 +1225,7 @@ def stage_invokes_db_client(tokens: list[str], wrapper_depth: int) -> bool:
                 return True
 
     normalized = strip_leading_command_wrappers(tokens)
-    if segment_invokes_db_client(normalized):
+    if db_client_access_requires_approval(normalized):
         return True
 
     if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
