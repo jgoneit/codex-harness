@@ -219,6 +219,21 @@ class PreToolUseConfigTests(PreToolUseAssertions):
             self.assert_guard_decision("sqlite3 prod/app.db", DEFAULT_TOOL, BLOCK, project)
             self.assert_guard_decision("sqlite3 fixtures/.env", DEFAULT_TOOL, BLOCK, project)
 
+    def test_allow_paths_cannot_relax_secret_or_credential_reads(self) -> None:
+        cases = [
+            ({"allow_paths": [".env"]}, "cat .env", BLOCK),
+            ({"allow_paths": ["config/credentials.json"]}, "cat config/credentials.json", BLOCK),
+            ({"allow_paths": ["~/.aws/credentials"]}, "cat ~/.aws/credentials", BLOCK),
+            ({"allow_paths": ["tmp/"]}, "cat tmp/x.txt", ALLOW),
+        ]
+
+        for config, command, expected in cases:
+            with self.subTest(command=command, config=config):
+                with tempfile.TemporaryDirectory() as root:
+                    project = Path(root)
+                    write_guard_config(project, config)
+                    self.assert_guard_decision(command, DEFAULT_TOOL, expected, project)
+
     def test_hard_denies_ignore_config(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             project = Path(root)
