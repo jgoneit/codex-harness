@@ -87,6 +87,10 @@ Review status는 다음 중 하나입니다.
 - `review_not_required_tiny_only`
 - `review_blocked_degraded`
 
+## Configuration & Scope
+
+프로젝트는 `.harness/guard.json`으로 좁은 soft-category 완화를 opt-in할 수 있습니다. 지원 키는 `localhost` 또는 `127.0.0.1` 같은 DB host 목록인 `allow_db_local_connections`와 `tmp/` 또는 `fixtures/` 같은 project path 목록인 `allow_paths`입니다. Harness guard decision은 Codex approval과 sandboxing 아래의 defense-in-depth signal입니다. allow rule은 현재 `db_client_access` 같은 soft category의 false positive 마찰만 줄이며, secret file read, credential exfiltration, protected broad delete, destructive Git command, destructive SQL, environment dump 같은 hard-deny category는 완화할 수 없습니다.
+
 ## Example Prompt
 
 ```text

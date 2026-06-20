@@ -8,7 +8,8 @@ import json
 import re
 import shlex
 import sys
-from typing import Any
+from pathlib import Path
+from typing import Any, Callable
 
 
 PLAN_PROMPT = "Proceed with this Plan? [y/N]"
@@ -56,8 +57,10 @@ SHELL_TOOL_NAME_PARTS = ("bash", "shell", "terminal", "exec")
 SQL_CLIENTS = {"psql", "mysql", "mariadb", "sqlite3", "sqlcmd", "sqlplus"}
 NOSQL_CLIENTS = {"mongosh", "mongo", "redis-cli"}
 DB_CLIENTS = SQL_CLIENTS | NOSQL_CLIENTS
-DB_CLIENT_INFORMATION_CLIENTS = {"psql", "mysql", "redis-cli", "sqlplus"}
 DB_CLIENT_INFORMATION_ARGS = {"--version", "-V", "--help"}
+GUARD_CONFIG_RELATIVE_PATH = ".harness/guard.json"
+GUARD_CONFIG_KEYS = {"allow_db_local_connections", "allow_paths"}
+SOFT_ALLOW_CATEGORIES = {"db_client_access"}
 SQL_IDENTIFIER = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"[^"]+"|`[^`]+`|\[[^\]]+\])'
 SQL_QUALIFIED_IDENTIFIER = rf"{SQL_IDENTIFIER}(?:\s*\.\s*{SQL_IDENTIFIER})*"
 SQL_SCHEMA_OBJECT = (
@@ -197,6 +200,7 @@ ENV_VALUE_OPTIONS = {
     "-S",
     "-u",
 }
+Detector = tuple[str, Callable[[str], str | None]]
 
 
 def read_input() -> dict[str, Any] | None:
@@ -273,6 +277,51 @@ def block_pre_tool_use(category: str, explanation: str) -> None:
         "Harness PreToolUse guardrail blocked a dangerous command: "
         f"{category}. {explanation}. Request explicit user approval or use a safer command."
     )
+
+
+def empty_guard_config() -> dict[str, tuple[str, ...]]:
+    return {"allow_db_local_connections": (), "allow_paths": ()}
+
+
+def warn_config_ignored(message: str) -> None:
+    sys.stderr.write(f"Harness guard config ignored: {message}\n")
+
+
+def load_guard_config(config_path: Path | None = None) -> dict[str, tuple[str, ...]]:
+    path = config_path if config_path is not None else Path.cwd() / GUARD_CONFIG_RELATIVE_PATH
+    config = empty_guard_config()
+    if not path.exists():
+        return config
+
+    try:
+        raw_config = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        warn_config_ignored(f"{path}: {exc}")
+        return config
+
+    if not isinstance(raw_config, dict):
+        warn_config_ignored(f"{path}: top-level value must be an object")
+        return config
+
+    unknown_keys = sorted(set(raw_config) - GUARD_CONFIG_KEYS)
+    if unknown_keys:
+        warn_config_ignored(f"{path}: unknown key(s): {', '.join(unknown_keys)}")
+        return config
+
+    loaded: dict[str, tuple[str, ...]] = {}
+    for key in sorted(GUARD_CONFIG_KEYS):
+        value = raw_config.get(key, [])
+        if not isinstance(value, list):
+            warn_config_ignored(f"{path}: {key} must be a list of strings")
+            return config
+        items: list[str] = []
+        for item in value:
+            if not isinstance(item, str) or not item.strip():
+                warn_config_ignored(f"{path}: {key} must be a list of non-empty strings")
+                return config
+            items.append(item.strip())
+        loaded[key] = tuple(items)
+    return loaded
 
 
 def missing_terms(message: str, terms: tuple[str, ...]) -> list[str]:
@@ -1145,15 +1194,156 @@ def segment_invokes_db_client(tokens: list[str]) -> bool:
 def db_client_access_requires_approval(tokens: list[str]) -> bool:
     if not segment_invokes_db_client(tokens):
         return False
-    command = shell_executable_name(tokens[0])
     args = tokens[1:]
-    if (
-        command in DB_CLIENT_INFORMATION_CLIENTS
-        and args
-        and all(arg in DB_CLIENT_INFORMATION_ARGS for arg in args)
-    ):
+    if args and all(arg in DB_CLIENT_INFORMATION_ARGS for arg in args):
         return False
     return True
+
+
+def normalize_db_host(host: str) -> str:
+    normalized = host.strip()
+    if not normalized:
+        return ""
+    parsed = urllib_parse_host(normalized)
+    if parsed:
+        normalized = parsed
+    if "@" in normalized:
+        normalized = normalized.rsplit("@", 1)[-1]
+    if normalized.startswith("//"):
+        normalized = normalized[2:]
+    normalized = normalized.split("/", 1)[0]
+    if normalized.startswith("[") and "]" in normalized:
+        return normalized[1 : normalized.index("]")].lower()
+    if normalized.count(":") == 1:
+        normalized = normalized.split(":", 1)[0]
+    return normalized.lower()
+
+
+def urllib_parse_host(value: str) -> str:
+    if "://" not in value:
+        return ""
+    try:
+        from urllib.parse import urlparse
+    except ImportError:
+        return ""
+    parsed = urlparse(value)
+    return parsed.hostname or ""
+
+
+def sqlplus_host_from_connect_string(value: str) -> str:
+    if "@" not in value:
+        return ""
+    host_part = value.rsplit("@", 1)[-1]
+    if host_part.startswith("//"):
+        host_part = host_part[2:]
+    return normalize_db_host(host_part)
+
+
+def db_client_hosts(tokens: list[str]) -> list[str]:
+    if not segment_invokes_db_client(tokens):
+        return []
+
+    command = shell_executable_name(tokens[0])
+    hosts: list[str] = []
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token in {"-h", "--host"} and index + 1 < len(tokens):
+            hosts.append(tokens[index + 1])
+            index += 2
+            continue
+        if token.startswith("--host="):
+            hosts.append(token.split("=", 1)[1])
+            index += 1
+            continue
+        if command in {"psql", "mysql", "mariadb", "redis-cli"} and token.startswith("-h") and token != "-h":
+            hosts.append(token[2:])
+            index += 1
+            continue
+        if command == "sqlcmd" and token in {"-S", "--server"} and index + 1 < len(tokens):
+            hosts.append(tokens[index + 1])
+            index += 2
+            continue
+        if command == "sqlcmd" and token.startswith("-S") and token != "-S":
+            hosts.append(token[2:])
+            index += 1
+            continue
+        if command == "sqlcmd" and token.startswith("--server="):
+            hosts.append(token.split("=", 1)[1])
+            index += 1
+            continue
+        if token.startswith(("postgres://", "postgresql://", "mysql://", "mariadb://", "mongodb://", "mongodb+srv://", "redis://", "rediss://")):
+            hosts.append(token)
+        elif command == "sqlplus":
+            host = sqlplus_host_from_connect_string(token)
+            if host:
+                hosts.append(host)
+        index += 1
+    return [host for host in (normalize_db_host(host) for host in hosts) if host]
+
+
+def db_client_uses_allowed_host(tokens: list[str], config: dict[str, tuple[str, ...]]) -> bool:
+    allowed_hosts = {normalize_db_host(host) for host in config["allow_db_local_connections"]}
+    allowed_hosts.discard("")
+    if not allowed_hosts:
+        return False
+    hosts = db_client_hosts(tokens)
+    return bool(hosts) and all(host in allowed_hosts for host in hosts)
+
+
+def sqlite_value_option_consumes_next(token: str) -> bool:
+    return token in {
+        "-cmd",
+        "-init",
+        "-separator",
+        "-newline",
+        "-nullvalue",
+    }
+
+
+def db_client_path_arguments(tokens: list[str]) -> list[str]:
+    if not tokens or shell_executable_name(tokens[0]) != "sqlite3":
+        return []
+
+    paths: list[str] = []
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if sqlite_value_option_consumes_next(token):
+            index += 2
+            continue
+        if token.startswith("-"):
+            index += 1
+            continue
+        if token != ":memory:":
+            paths.append(token)
+        break
+    return paths
+
+
+def path_matches_allowed_path(path: str, allowed_path: str) -> bool:
+    normalized = normalize_path(path)
+    allowed = normalize_path(allowed_path)
+    return normalized == allowed or normalized.startswith(f"{allowed}/")
+
+
+def db_client_uses_allowed_path(tokens: list[str], config: dict[str, tuple[str, ...]]) -> bool:
+    allowed_paths = config["allow_paths"]
+    if not allowed_paths:
+        return False
+    paths = db_client_path_arguments(tokens)
+    if not paths:
+        return False
+    for path in paths:
+        if is_secret_path(path) or is_credential_path(path):
+            return False
+        if not any(path_matches_allowed_path(path, allowed_path) for allowed_path in allowed_paths):
+            return False
+    return True
+
+
+def db_client_invocation_allowed_by_config(tokens: list[str], config: dict[str, tuple[str, ...]]) -> bool:
+    return db_client_uses_allowed_host(tokens, config) or db_client_uses_allowed_path(tokens, config)
 
 
 def env_split_string_payloads(tokens: list[str]) -> list[str]:
@@ -1239,6 +1429,51 @@ def stage_invokes_db_client(tokens: list[str], wrapper_depth: int) -> bool:
         if payload and detect_db_client_access(payload, wrapper_depth + 1):
             return True
     return False
+
+
+def stage_db_client_access_allowances(
+    tokens: list[str],
+    config: dict[str, tuple[str, ...]],
+    wrapper_depth: int,
+) -> list[bool]:
+    allowances: list[bool] = []
+    if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
+        for payload in env_split_string_payloads_after_leading_wrappers(tokens):
+            allowances.extend(db_client_access_allowances(payload, config, wrapper_depth + 1))
+
+    normalized = strip_leading_command_wrappers(tokens)
+    if segment_invokes_db_client(normalized) and db_client_access_requires_approval(normalized):
+        allowances.append(db_client_invocation_allowed_by_config(normalized, config))
+
+    if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
+        payload = shell_wrapper_payload_from_argv(normalized)
+        if payload:
+            allowances.extend(db_client_access_allowances(payload, config, wrapper_depth + 1))
+    return allowances
+
+
+def db_client_access_allowances(
+    command_text: str,
+    config: dict[str, tuple[str, ...]],
+    wrapper_depth: int = 0,
+) -> list[bool]:
+    allowances: list[bool] = []
+    if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
+        for payload in iter_command_substitution_payloads(command_text):
+            allowances.extend(db_client_access_allowances(payload, config, wrapper_depth + 1))
+    for segment in iter_command_segments(command_text):
+        for stage in iter_pipeline_stages(segment):
+            tokens = tokenize_segment(stage)
+            allowances.extend(stage_db_client_access_allowances(tokens, config, wrapper_depth))
+    return allowances
+
+
+def db_client_access_allowed_by_config(
+    command_text: str,
+    config: dict[str, tuple[str, ...]],
+) -> bool:
+    allowances = db_client_access_allowances(command_text, config)
+    return bool(allowances) and all(allowances)
 
 
 def detect_db_client_access(command_text: str, wrapper_depth: int = 0) -> str | None:
@@ -1394,38 +1629,70 @@ def detect_production_impact(command_text: str) -> str | None:
     return None
 
 
-def dangerous_command_category(command_text: str, wrapper_depth: int = 0) -> tuple[str, str] | None:
-    detectors = (
-        ("credential_exfiltration", detect_credential_exfiltration),
-        ("secret_file_read", detect_secret_file_read),
-        ("environment_dump", detect_environment_dump),
-        ("recursive_secret_search", detect_recursive_secret_search),
-        ("db_client_access", detect_db_client_access),
-        ("broad_destructive_delete", detect_broad_destructive_delete),
-        ("destructive_git", detect_destructive_git),
-        ("destructive_sql", detect_destructive_sql),
-        ("production_impact", detect_production_impact),
-    )
+NON_SOFT_DENY_DETECTORS: tuple[Detector, ...] = (
+    ("credential_exfiltration", detect_credential_exfiltration),
+    ("secret_file_read", detect_secret_file_read),
+    ("environment_dump", detect_environment_dump),
+    ("broad_destructive_delete", detect_broad_destructive_delete),
+    ("destructive_git", detect_destructive_git),
+    ("destructive_sql", detect_destructive_sql),
+    ("recursive_secret_search", detect_recursive_secret_search),
+    ("production_impact", detect_production_impact),
+)
+
+SOFT_DENY_DETECTORS: tuple[Detector, ...] = (
+    ("db_client_access", detect_db_client_access),
+)
+
+
+def dangerous_category_from_detectors(
+    command_text: str,
+    detectors: tuple[Detector, ...],
+    wrapper_depth: int = 0,
+) -> tuple[str, str] | None:
     for category, detector in detectors:
         explanation = detector(command_text)
         if explanation:
             return category, explanation
     if wrapper_depth < MAX_SHELL_WRAPPER_DEPTH:
         for payload in iter_command_substitution_payloads(command_text):
-            dangerous = dangerous_command_category(payload, wrapper_depth + 1)
+            dangerous = dangerous_category_from_detectors(payload, detectors, wrapper_depth + 1)
             if dangerous:
                 return dangerous
         for segment in iter_command_segments(command_text):
             tokens = tokenize_segment(segment)
             for payload in env_split_string_payloads_after_leading_wrappers(tokens):
-                dangerous = dangerous_command_category(payload, wrapper_depth + 1)
+                dangerous = dangerous_category_from_detectors(payload, detectors, wrapper_depth + 1)
                 if dangerous:
                     return dangerous
         for payload in shell_wrapper_payloads(command_text):
-            dangerous = dangerous_command_category(payload, wrapper_depth + 1)
+            dangerous = dangerous_category_from_detectors(payload, detectors, wrapper_depth + 1)
             if dangerous:
                 return dangerous
     return None
+
+
+def dangerous_command_category(command_text: str, wrapper_depth: int = 0) -> tuple[str, str] | None:
+    dangerous = dangerous_category_from_detectors(
+        command_text,
+        NON_SOFT_DENY_DETECTORS,
+        wrapper_depth,
+    )
+    if dangerous:
+        return dangerous
+    return dangerous_category_from_detectors(command_text, SOFT_DENY_DETECTORS, wrapper_depth)
+
+
+def soft_category_allowed_by_config(
+    category: str,
+    command_text: str,
+    config: dict[str, tuple[str, ...]],
+) -> bool:
+    if category not in SOFT_ALLOW_CATEGORIES:
+        return False
+    if category == "db_client_access":
+        return db_client_access_allowed_by_config(command_text, config)
+    return False
 
 
 def pre_tool_use(payload: dict[str, object]) -> int:
@@ -1438,9 +1705,12 @@ def pre_tool_use(payload: dict[str, object]) -> int:
         return 0
     if not command_text:
         return 0
+    config = load_guard_config()
     dangerous = dangerous_command_category(command_text)
     if dangerous:
         category, explanation = dangerous
+        if soft_category_allowed_by_config(category, command_text, config):
+            return 0
         block_pre_tool_use(category, explanation)
     return 0
 

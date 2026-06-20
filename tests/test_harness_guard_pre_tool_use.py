@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -31,10 +32,14 @@ BLOCK_CASES = [
     ("git push --force", DEFAULT_TOOL, BLOCK, "destructive git push"),
     ("mysql -u root", DEFAULT_TOOL, BLOCK, "direct SQL client access"),
     ("mysql -h localhost", DEFAULT_TOOL, BLOCK, "DB host flag is not help"),
+    ("mariadb -h localhost", DEFAULT_TOOL, BLOCK, "DB host flag is not help"),
     ("psql", DEFAULT_TOOL, BLOCK, "direct SQL client access"),
+    ("psql -h localhost", DEFAULT_TOOL, BLOCK, "direct SQL client access"),
     ("sqlplus /", DEFAULT_TOOL, BLOCK, "direct SQL client access"),
+    ("sqlite3 fixtures/test.db", DEFAULT_TOOL, BLOCK, "direct SQLite database access"),
+    ("mongosh mongodb://localhost/test", DEFAULT_TOOL, BLOCK, "direct MongoDB client access"),
     ("redis-cli", DEFAULT_TOOL, BLOCK, "direct NoSQL client access"),
-    ("sqlite3 --version", DEFAULT_TOOL, BLOCK, "non-target DB client info flag still blocked"),
+    ("redis-cli -h localhost", DEFAULT_TOOL, BLOCK, "DB host flag is not help"),
     ("psql -c 'DROP TABLE t'", DEFAULT_TOOL, BLOCK, "destructive SQL through psql"),
     ("psql -c 'TRUNCATE t'", DEFAULT_TOOL, BLOCK, "destructive SQL through psql"),
     ("psql -c 'DELETE FROM users'", DEFAULT_TOOL, BLOCK, "destructive SQL through psql"),
@@ -65,6 +70,9 @@ ALLOW_CASES = [
     ("npm test", DEFAULT_TOOL, ALLOW, "test command"),
     ("psql --version", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
     ("mysql --version", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
+    ("mariadb --version", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
+    ("sqlite3 --version", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
+    ("mongosh --version", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
     ("redis-cli --version", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
     ("sqlplus --version", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
     ("psql -V", DEFAULT_TOOL, ALLOW, "approved Phase 2 DB info flag allowlist"),
@@ -102,7 +110,11 @@ KNOWN_FALSE_NEGATIVE_GAPS = [
 ]
 
 
-def run_pre_tool_use(command: str, tool: str = DEFAULT_TOOL) -> subprocess.CompletedProcess[str]:
+def run_pre_tool_use(
+    command: str,
+    tool: str = DEFAULT_TOOL,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
     payload = {"tool_name": tool, "tool_input": {"command": command}}
     return subprocess.run(
         [sys.executable, str(HARNESS_GUARD), "PreToolUse"],
@@ -110,7 +122,14 @@ def run_pre_tool_use(command: str, tool: str = DEFAULT_TOOL) -> subprocess.Compl
         text=True,
         capture_output=True,
         check=False,
+        cwd=cwd,
     )
+
+
+def write_guard_config(root: Path, config: object) -> None:
+    config_dir = root / ".harness"
+    config_dir.mkdir()
+    (config_dir / "guard.json").write_text(json.dumps(config), encoding="utf-8")
 
 
 def slugify(value: str) -> str:
@@ -119,8 +138,14 @@ def slugify(value: str) -> str:
 
 
 class PreToolUseAssertions(unittest.TestCase):
-    def assert_guard_decision(self, command: str, tool: str, expected: str) -> None:
-        result = run_pre_tool_use(command, tool)
+    def assert_guard_decision(
+        self,
+        command: str,
+        tool: str,
+        expected: str,
+        cwd: Path | None = None,
+    ) -> None:
+        result = run_pre_tool_use(command, tool, cwd)
         self.assertEqual(result.returncode, 0, result.stderr)
 
         if expected == BLOCK:
@@ -170,6 +195,103 @@ class PreToolUseDecisionTests(PreToolUseAssertions):
 
     def test_allows_env_assignment_prefixed_directory_listing(self) -> None:
         self.assert_guard_decision("FOO=bar ls -al", DEFAULT_TOOL, ALLOW)
+
+
+class PreToolUseConfigTests(PreToolUseAssertions):
+    def test_missing_config_keeps_db_connection_blocked(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            self.assert_guard_decision("psql -h localhost", DEFAULT_TOOL, BLOCK, Path(root))
+
+    def test_allow_db_local_connections_allows_only_configured_hosts(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(project, {"allow_db_local_connections": ["localhost"]})
+
+            self.assert_guard_decision("psql -h localhost", DEFAULT_TOOL, ALLOW, project)
+            self.assert_guard_decision("psql -h prod.db", DEFAULT_TOOL, BLOCK, project)
+
+    def test_allow_paths_allows_only_soft_sqlite_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(project, {"allow_paths": ["fixtures/"]})
+
+            self.assert_guard_decision("sqlite3 fixtures/app.db", DEFAULT_TOOL, ALLOW, project)
+            self.assert_guard_decision("sqlite3 prod/app.db", DEFAULT_TOOL, BLOCK, project)
+            self.assert_guard_decision("sqlite3 fixtures/.env", DEFAULT_TOOL, BLOCK, project)
+
+    def test_allow_paths_cannot_relax_secret_or_credential_reads(self) -> None:
+        cases = [
+            ({"allow_paths": [".env"]}, "cat .env", BLOCK),
+            ({"allow_paths": ["config/credentials.json"]}, "cat config/credentials.json", BLOCK),
+            ({"allow_paths": ["~/.aws/credentials"]}, "cat ~/.aws/credentials", BLOCK),
+            ({"allow_paths": ["tmp/"]}, "cat tmp/x.txt", ALLOW),
+        ]
+
+        for config, command, expected in cases:
+            with self.subTest(command=command, config=config):
+                with tempfile.TemporaryDirectory() as root:
+                    project = Path(root)
+                    write_guard_config(project, config)
+                    self.assert_guard_decision(command, DEFAULT_TOOL, expected, project)
+
+    def test_hard_denies_ignore_config(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(
+                project,
+                {
+                    "allow_db_local_connections": ["localhost", "prod.db"],
+                    "allow_paths": ["fixtures/"],
+                },
+            )
+            cases = [
+                "cat .env",
+                "rm -rf .",
+                "git reset --hard",
+                "psql -h localhost -c 'DROP TABLE t'",
+                "DROP TABLE t",
+                "env",
+                "bash -lc 'psql -h localhost; cat .env'",
+            ]
+
+            for command in cases:
+                with self.subTest(command=command):
+                    self.assert_guard_decision(command, DEFAULT_TOOL, BLOCK, project)
+
+    def test_broken_config_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            config_dir = project / ".harness"
+            config_dir.mkdir()
+            (config_dir / "guard.json").write_text("{broken", encoding="utf-8")
+
+            result = run_pre_tool_use("psql -h localhost", DEFAULT_TOOL, project)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
+            self.assertIn("Harness guard config ignored", result.stderr)
+
+    def test_unknown_config_key_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(
+                project,
+                {"allow_db_local_connections": ["localhost"], "unknown": ["value"]},
+            )
+
+            result = run_pre_tool_use("psql -h localhost", DEFAULT_TOOL, project)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
+            self.assertIn("unknown key", result.stderr)
+
+    def test_invalid_config_type_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(project, {"allow_db_local_connections": "localhost"})
+
+            result = run_pre_tool_use("psql -h localhost", DEFAULT_TOOL, project)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
+            self.assertIn("must be a list of strings", result.stderr)
 
 
 class PreToolUseKnownGapTests(PreToolUseAssertions):

@@ -87,6 +87,10 @@ The Review status is one of:
 - `review_not_required_tiny_only`
 - `review_blocked_degraded`
 
+## Configuration & Scope
+
+Projects can opt in to narrow soft-category relaxations with `.harness/guard.json`. Supported keys are `allow_db_local_connections`, a list of DB hosts such as `localhost` or `127.0.0.1`, and `allow_paths`, a list of project paths such as `tmp/` or `fixtures/`. Harness guard decisions are a defense-in-depth signal below Codex approval and sandboxing: allow rules only reduce false-positive friction for soft categories, currently `db_client_access`, and cannot relax hard-deny categories such as secret file reads, credential exfiltration, protected broad deletes, destructive Git commands, destructive SQL, or environment dumps.
+
 ## Example Prompt
 
 ```text
