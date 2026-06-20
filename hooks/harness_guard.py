@@ -84,6 +84,8 @@ SQL_PROCEDURE_STATEMENT = (
 SQL_TEXT_COMMANDS = {"echo", "printf"}
 COMMAND_PREFIXES = {
     "cat",
+    "cp",
+    "curl",
     "docker",
     "docker-compose",
     "env",
@@ -97,6 +99,7 @@ COMMAND_PREFIXES = {
     "kubectl",
     "less",
     "more",
+    "mv",
     "printenv",
     "printf",
     "psql",
@@ -110,13 +113,64 @@ COMMAND_PREFIXES = {
     "redis-cli",
     "rg",
     "rm",
+    "rsync",
     "sed",
     "set",
     "sudo",
     "tail",
     "terraform",
+    "wget",
 }
 READ_COMMANDS = {"cat", "less", "more", "head", "tail"}
+COPY_SOURCE_COMMANDS = {"cp", "mv", "rsync"}
+COPY_TARGET_DIRECTORY_OPTIONS = {"-t", "--target-directory"}
+COPY_VALUE_OPTIONS = {"-S", "--suffix"}
+RSYNC_VALUE_OPTIONS = {
+    "-e",
+    "--address",
+    "--backup-dir",
+    "--block-size",
+    "--bwlimit",
+    "--checksum-choice",
+    "--chmod",
+    "--chown",
+    "--compare-dest",
+    "--compress-level",
+    "--contimeout",
+    "--copy-dest",
+    "--debug",
+    "--exclude",
+    "--exclude-from",
+    "--files-from",
+    "--filter",
+    "--groupmap",
+    "--iconv",
+    "--include",
+    "--include-from",
+    "--info",
+    "--link-dest",
+    "--log-file",
+    "--max-size",
+    "--min-size",
+    "--out-format",
+    "--partial-dir",
+    "--password-file",
+    "--port",
+    "--remote-option",
+    "--rsh",
+    "--rsync-path",
+    "--stderr",
+    "--suffix",
+    "--temp-dir",
+    "--timeout",
+    "--usermap",
+}
+CURL_DATA_FILE_OPTIONS = {"-d", "--data", "--data-binary", "--data-ascii"}
+CURL_DATA_URLENCODE_OPTIONS = {"--data-urlencode"}
+CURL_FORM_FILE_OPTIONS = {"-F", "--form"}
+CURL_JSON_FILE_OPTIONS = {"--json"}
+CURL_UPLOAD_FILE_OPTIONS = {"-T", "--upload-file"}
+WGET_UPLOAD_FILE_OPTIONS = {"--body-file", "--post-file"}
 SECRET_BASENAMES = {
     "key.json",
     "credentials.json",
@@ -498,6 +552,18 @@ def command_looks_like_shell(command_text: str) -> bool:
         return True
     for segment in iter_command_segments(stripped):
         tokens = tokenize_segment(segment)
+        if not tokens:
+            continue
+
+        _, env_dump_tokens = strip_leading_env_assignments_and_sudo(tokens)
+        if env_dump_tokens:
+            command = env_dump_tokens[0].lower()
+            if command == "env" and env_invocation_is_dump(env_dump_tokens):
+                return True
+            if command == "printenv":
+                return True
+
+        tokens = strip_leading_command_wrappers(tokens)
         if not tokens:
             continue
         command = tokens[0].lower()
@@ -963,16 +1029,27 @@ def is_credential_path(path: str) -> bool:
     return normalize_path(path) in CREDENTIAL_PATHS
 
 
+def is_sensitive_path(path: str) -> bool:
+    return is_secret_path(path) or is_credential_path(path)
+
+
 def has_sed_print_suppression(tokens: list[str]) -> bool:
     return any(token == "-n" or (token.startswith("-") and "n" in token[1:]) for token in tokens[1:])
 
 
-def detect_credential_exfiltration(command_text: str) -> str | None:
+def normalized_pipeline_stage_tokens(command_text: str) -> list[list[str]]:
+    stages: list[list[str]] = []
     for segment in iter_command_segments(command_text):
-        tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_env_assignments_and_sudo(tokens)
-        if not tokens:
-            continue
+        for stage in iter_pipeline_stages(segment):
+            tokens = tokenize_segment(stage)
+            tokens = strip_leading_command_wrappers(tokens)
+            if tokens:
+                stages.append(tokens)
+    return stages
+
+
+def detect_credential_exfiltration(command_text: str) -> str | None:
+    for tokens in normalized_pipeline_stage_tokens(command_text):
         command = tokens[0].lower()
         if command in READ_COMMANDS and any(is_credential_path(token) for token in tokens[1:]):
             return "Credential store files should not be printed from hook-run shell commands"
@@ -983,17 +1060,221 @@ def detect_credential_exfiltration(command_text: str) -> str | None:
 
 
 def detect_secret_file_read(command_text: str) -> str | None:
-    for segment in iter_command_segments(command_text):
-        tokens = tokenize_segment(segment)
-        _, tokens = strip_leading_env_assignments_and_sudo(tokens)
-        if not tokens:
-            continue
+    for tokens in normalized_pipeline_stage_tokens(command_text):
         command = tokens[0].lower()
         if command in READ_COMMANDS and any(is_secret_path(token) for token in tokens[1:] if not token.startswith("-")):
             return "Obvious secret files should not be read or printed directly"
         if command == "sed" and has_sed_print_suppression(tokens):
             if any(is_secret_path(token) for token in tokens[1:] if not token.startswith("-")):
                 return "Obvious secret files should not be read or printed directly"
+    return None
+
+
+def copy_like_source_paths(tokens: list[str]) -> list[str]:
+    if not tokens:
+        return []
+
+    command = shell_executable_name(tokens[0])
+    target_directory_mode = False
+    operands: list[str] = []
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            operands.extend(tokens[index + 1 :])
+            break
+
+        if command in {"cp", "mv"}:
+            if token in COPY_TARGET_DIRECTORY_OPTIONS:
+                target_directory_mode = True
+                index += 2
+                continue
+            if token.startswith("--target-directory=") or (token.startswith("-t") and token != "-t"):
+                target_directory_mode = True
+                index += 1
+                continue
+
+            if token in COPY_VALUE_OPTIONS:
+                index += 2
+                continue
+            if token.startswith("--suffix=") or (token.startswith("-S") and token != "-S"):
+                index += 1
+                continue
+
+        if command == "rsync":
+            if token in RSYNC_VALUE_OPTIONS:
+                index += 2
+                continue
+            if any(
+                token.startswith(f"{option}=")
+                for option in RSYNC_VALUE_OPTIONS
+                if option.startswith("--")
+            ):
+                index += 1
+                continue
+
+        if token.startswith("-"):
+            index += 1
+            continue
+
+        operands.append(token)
+        index += 1
+
+    if target_directory_mode:
+        return operands
+    if len(operands) <= 1:
+        return operands
+    return operands[:-1]
+
+
+def detect_secret_source_copy(command_text: str) -> str | None:
+    for tokens in normalized_pipeline_stage_tokens(command_text):
+        if shell_executable_name(tokens[0]) not in COPY_SOURCE_COMMANDS:
+            continue
+        if any(is_sensitive_path(path) for path in copy_like_source_paths(tokens)):
+            return "Secret or credential source files should not be copied, moved, or synced automatically"
+    return None
+
+
+def path_from_at_file_reference(value: str) -> str:
+    return value[1:] if value.startswith("@") and len(value) > 1 else ""
+
+
+def path_from_data_urlencode_file_reference(value: str) -> str:
+    if value.startswith("@") and len(value) > 1:
+        return value[1:]
+    name, separator, path = value.partition("@")
+    if separator and name and path and "=" not in name:
+        return path
+    return ""
+
+
+def path_from_form_file_reference(value: str) -> str:
+    name, separator, path = value.partition("=")
+    if separator and name and path[:1] in {"@", "<"} and len(path) > 1:
+        return path[1:].split(";", 1)[0]
+    return ""
+
+
+def option_value_from_attached_short(token: str, option: str) -> str:
+    if token == option or not token.startswith(option):
+        return ""
+    value = token[len(option) :]
+    return value[1:] if value.startswith("=") else value
+
+
+def curl_secret_upload(tokens: list[str]) -> bool:
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            break
+
+        if token in CURL_DATA_FILE_OPTIONS:
+            if index + 1 < len(tokens):
+                path = path_from_at_file_reference(tokens[index + 1])
+                if path and is_sensitive_path(path):
+                    return True
+            index += 2
+            continue
+        if any(
+            token.startswith(f"{option}=")
+            and is_sensitive_path(path_from_at_file_reference(token.split("=", 1)[1]))
+            for option in CURL_DATA_FILE_OPTIONS
+            if option.startswith("--")
+        ):
+            return True
+        attached_data = option_value_from_attached_short(token, "-d")
+        if attached_data:
+            path = path_from_at_file_reference(attached_data)
+            if path and is_sensitive_path(path):
+                return True
+
+        if token in CURL_DATA_URLENCODE_OPTIONS:
+            if index + 1 < len(tokens):
+                path = path_from_data_urlencode_file_reference(tokens[index + 1])
+                if path and is_sensitive_path(path):
+                    return True
+            index += 2
+            continue
+        if any(
+            token.startswith(f"{option}=")
+            and is_sensitive_path(path_from_data_urlencode_file_reference(token.split("=", 1)[1]))
+            for option in CURL_DATA_URLENCODE_OPTIONS
+        ):
+            return True
+
+        if token in CURL_FORM_FILE_OPTIONS:
+            if index + 1 < len(tokens):
+                path = path_from_form_file_reference(tokens[index + 1])
+                if path and is_sensitive_path(path):
+                    return True
+            index += 2
+            continue
+        if token.startswith("--form=") and is_sensitive_path(
+            path_from_form_file_reference(token.split("=", 1)[1])
+        ):
+            return True
+        attached_form = option_value_from_attached_short(token, "-F")
+        if attached_form:
+            path = path_from_form_file_reference(attached_form)
+            if path and is_sensitive_path(path):
+                return True
+
+        if token in CURL_JSON_FILE_OPTIONS:
+            if index + 1 < len(tokens):
+                path = path_from_at_file_reference(tokens[index + 1])
+                if path and is_sensitive_path(path):
+                    return True
+            index += 2
+            continue
+        if token.startswith("--json=") and is_sensitive_path(
+            path_from_at_file_reference(token.split("=", 1)[1])
+        ):
+            return True
+
+        if token in CURL_UPLOAD_FILE_OPTIONS:
+            if index + 1 < len(tokens) and is_sensitive_path(tokens[index + 1]):
+                return True
+            index += 2
+            continue
+        if token.startswith("--upload-file=") and is_sensitive_path(token.split("=", 1)[1]):
+            return True
+        attached_upload = option_value_from_attached_short(token, "-T")
+        if attached_upload and is_sensitive_path(attached_upload):
+            return True
+
+        index += 1
+    return False
+
+
+def wget_secret_upload(tokens: list[str]) -> bool:
+    index = 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--":
+            break
+        if token in WGET_UPLOAD_FILE_OPTIONS:
+            if index + 1 < len(tokens) and is_sensitive_path(tokens[index + 1]):
+                return True
+            index += 2
+            continue
+        if any(
+            token.startswith(f"{option}=") and is_sensitive_path(token.split("=", 1)[1])
+            for option in WGET_UPLOAD_FILE_OPTIONS
+        ):
+            return True
+        index += 1
+    return False
+
+
+def detect_secret_file_upload(command_text: str) -> str | None:
+    for tokens in normalized_pipeline_stage_tokens(command_text):
+        command = shell_executable_name(tokens[0])
+        if command == "curl" and curl_secret_upload(tokens):
+            return "Secret or credential files should not be uploaded automatically"
+        if command == "wget" and wget_secret_upload(tokens):
+            return "Secret or credential files should not be uploaded automatically"
     return None
 
 
@@ -1632,6 +1913,8 @@ def detect_production_impact(command_text: str) -> str | None:
 NON_SOFT_DENY_DETECTORS: tuple[Detector, ...] = (
     ("credential_exfiltration", detect_credential_exfiltration),
     ("secret_file_read", detect_secret_file_read),
+    ("secret_source_copy", detect_secret_source_copy),
+    ("secret_file_upload", detect_secret_file_upload),
     ("environment_dump", detect_environment_dump),
     ("broad_destructive_delete", detect_broad_destructive_delete),
     ("destructive_git", detect_destructive_git),
