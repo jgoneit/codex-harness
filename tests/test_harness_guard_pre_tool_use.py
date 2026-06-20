@@ -7,12 +7,6 @@ import sys
 import unittest
 from pathlib import Path
 
-try:
-    import pytest
-except ImportError:  # pragma: no cover - exercised when pytest is not installed.
-    pytest = None
-
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HARNESS_GUARD = REPO_ROOT / "hooks" / "harness_guard.py"
 DEFAULT_TOOL = "bash"
@@ -20,15 +14,6 @@ BLOCK = "BLOCK"
 ALLOW = "ALLOW"
 COMPACT_BLOCK_DECISION = '{"decision":"block"}'
 COMPACT_BLOCK_DECISION_PREFIX = COMPACT_BLOCK_DECISION[:-1]
-
-ENV_ASSIGN_PREFIX_XFAIL_REASON = (
-    "BUG: env-assign prefix bypass, 별도 루프 수정 대상. 수정되면 XPASS 로 전환됨"
-)
-DB_CLIENT_FALSE_POSITIVE_REASON = (
-    "DB 클라이언트 바이너리를 서브커맨드 무관하게 차단. allowlist 도입(별도 루프) 동기. "
-    "정상 동작은 ALLOWED 여야 함"
-)
-
 
 BLOCK_CASES = [
     ("cat ~/.aws/credentials", DEFAULT_TOOL, BLOCK, "credential store file read"),
@@ -196,8 +181,6 @@ def make_expected_failure_test(command: str, tool: str, expected: str, rationale
         self.assert_guard_decision(command, tool, expected)
 
     test.__doc__ = rationale
-    if pytest is not None:
-        return pytest.mark.xfail(reason=rationale, strict=False)(test)
     return unittest.expectedFailure(test)
 
 
