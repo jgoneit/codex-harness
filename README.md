@@ -106,6 +106,8 @@ When a task fits multiple categories, Harness chooses the higher-risk category.
 
 Harness includes hook configuration for `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `SubagentStop`, and `Stop`.
 
+The canonical bundled hook config is `hooks/hooks.json`; root `hooks.json` is a compatibility copy and must stay in sync.
+
 The active validators are intentionally minimal:
 
 - `UserPromptSubmit` adds Harness context when `$harness` appears in the prompt.
@@ -114,6 +116,16 @@ The active validators are intentionally minimal:
 - `PreToolUse` blocks obvious dangerous shell-like commands, including credential reads, environment dumps, recursive secret searches, broad destructive deletes, destructive Git operations, destructive SQL, and production-impact commands.
 
 These hooks support Harness gates. They do not replace sandboxing, permissions, project security controls, or human judgment.
+
+## 📦 Release Packaging
+
+Create a release zip with:
+
+```text
+make package
+```
+
+This writes `dist/harness.zip` from Git-tracked and non-ignored files. It verifies the archive does not contain `.git/`, `__MACOSX/`, `__pycache__/`, `*.pyc`, `.DS_Store`, or `dist/` paths; ignored local files are not packaged.
 
 ## ⚠️ Current Limitation
 
