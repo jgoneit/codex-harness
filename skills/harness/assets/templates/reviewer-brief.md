@@ -36,22 +36,26 @@ Review completed changes against the accepted Plan, acceptance criteria, verific
 
 ## Review Criteria
 
-- [ ] Bugs
-- [ ] Regression risk
-- [ ] Missing or weak tests
-- [ ] Contract drift
-- [ ] Security issues
-- [ ] Data consistency issues
-- [ ] Performance risk
-- [ ] Scope creep
-- [ ] Local rule violations
-- [ ] Orchestration gaps
+- Scope compliance
+- Acceptance criteria satisfaction
+- Test coverage / verification fidelity
+- Security / secret handling
+- Data / DB risk
+- Bypass surface
+- API or contract drift
+- Maintainability / normalization consistency
 
-Unchecked criteria must be listed under Residual verification risk.
+Verdict values are only `pass`, `fail`, `unknown`, or `not_applicable`. `unknown` is not a pass and must be treated as residual risk. Every matrix cell must be filled; use `not_applicable` where applicable instead of blanks.
 
 ## Required Output Format
 
-Findings first, ordered by severity. Each finding must include:
+First, provide the Review Matrix table with columns exactly:
+
+```text
+| Criterion | Verdict | Evidence | Residual Risk |
+```
+
+Then separate findings into Blocking Findings and Non-blocking Findings. Order findings by severity within each section. If a section has no findings, write `not_applicable`. Each finding must include:
 
 - Severity:
 - Evidence:
@@ -59,7 +63,7 @@ Findings first, ordered by severity. Each finding must include:
 - Suggested action:
 - Must fix now?:
 
-If there are no concrete findings, write exactly:
+If there are no concrete findings, provide the required Review Matrix and then write exactly:
 
 ```text
 No concrete findings. Residual verification risk:

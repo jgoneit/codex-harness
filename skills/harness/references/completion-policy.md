@@ -13,6 +13,7 @@ Completion is the final `$harness` reporting gate.
 - completion status
 - `blocked_degraded` roles, if any, with reason and degraded independence
 - unresolved risks or follow-ups
+- Approval Ledger
 
 ## Review Status Enum
 
@@ -31,3 +32,23 @@ Completion is the final `$harness` reporting gate.
 ## Blocked / Degraded Reporting
 
 If a required role or gate is `blocked_degraded`, include blocked role/gate, blocker cause, evidence inspected, criteria applied, degraded independence, and remaining user decision or external state change.
+
+## Approval Ledger
+
+Completion must include an Approval Ledger table with columns exactly:
+
+```text
+| Gate | Required? | Requested? | User response | Result | Notes |
+```
+
+Minimum gates:
+
+- Plan approval
+- Scope expansion approval
+- Destructive command approval
+- Secret/config access approval
+- Direct DB access approval
+- Repair plan approval, with one row per repair round when multiple rounds occur
+- Verification exception approval
+
+Every ledger cell must be filled. Use `not_applicable` for any gate or field that does not apply; do not leave cells blank. The ledger records gate decisions for a gated workflow and must not imply autonomous execution beyond accepted approvals.

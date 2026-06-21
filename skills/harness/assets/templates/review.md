@@ -47,9 +47,27 @@ Use only when Status is `clean_context_review_completed`.
 - Reviewer subagent identity:
 - Clean-context: Yes/No
 - Read-only: Yes/No
-- Findings:
 
-#### Finding 1
+#### Review Matrix
+
+Use columns exactly as shown. Verdict values are only `pass`, `fail`, `unknown`, or `not_applicable`. `unknown` is not a pass and must be treated as residual risk. Do not leave any cells blank; use `not_applicable` where applicable.
+
+| Criterion | Verdict | Evidence | Residual Risk |
+| --- | --- | --- | --- |
+| Scope compliance | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| Acceptance criteria satisfaction | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| Test coverage / verification fidelity | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| Security / secret handling | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| Data / DB risk | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| Bypass surface | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| API or contract drift | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| Maintainability / normalization consistency | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+
+#### Blocking Findings
+
+Findings that must be fixed before completion. If none, write `not_applicable`.
+
+#### Finding N
 
 - Severity:
 - Evidence:
@@ -57,7 +75,19 @@ Use only when Status is `clean_context_review_completed`.
 - Suggested action:
 - Must fix now?:
 
-If there are no concrete findings, write exactly:
+#### Non-blocking Findings
+
+Findings that may be deferred, with rationale. If none, write `not_applicable`.
+
+#### Finding N
+
+- Severity:
+- Evidence:
+- Why it matters:
+- Suggested action:
+- Must fix now?:
+
+If there are no concrete findings in either findings section, write exactly:
 
 ```text
 No concrete findings. Residual verification risk:

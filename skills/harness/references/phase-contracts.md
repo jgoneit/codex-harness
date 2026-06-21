@@ -32,7 +32,19 @@ Implement output must include implementer identity/domain, changed files, verifi
 
 Only a clean-context read-only reviewer subagent can complete Review. Reviewer input is limited to the accepted Plan, classification, acceptance criteria, changed files/areas, diff or diff summary, verification results, relevant project rules, and required output format.
 
-Review is complete only when the reviewer returns concrete findings or exactly:
+Review output must include a Review Matrix table with columns exactly:
+
+```text
+| Criterion | Verdict | Evidence | Residual Risk |
+```
+
+Minimum Review Matrix criteria are Scope compliance, Acceptance criteria satisfaction, Test coverage / verification fidelity, Security / secret handling, Data / DB risk, Bypass surface, API or contract drift, and Maintainability / normalization consistency.
+
+Review Matrix verdict values are only `pass`, `fail`, `unknown`, or `not_applicable`. `unknown` is not a pass and must be treated as residual risk. Every matrix cell must be filled; use `not_applicable` where applicable instead of leaving cells blank.
+
+Review findings must be separated into blocking findings and non-blocking findings.
+
+Review is complete only when the reviewer returns the required Review Matrix plus concrete findings, or the required Review Matrix followed by exactly:
 
 ```text
 No concrete findings. Residual verification risk:
@@ -59,4 +71,12 @@ Implement only the accepted Repair Plan. If repair reveals new risk, scope expan
 
 ## Completion
 
-Report implemented changes, verification, Review status, addressed findings, `blocked_degraded` roles, unresolved risks, and follow-ups.
+Report implemented changes, verification, Review status, addressed findings, `blocked_degraded` roles, unresolved risks, follow-ups, and an Approval Ledger.
+
+The Approval Ledger table must have columns exactly:
+
+```text
+| Gate | Required? | Requested? | User response | Result | Notes |
+```
+
+Minimum Approval Ledger gates are Plan approval, Scope expansion approval, Destructive command approval, Secret/config access approval, Direct DB access approval, Repair plan approval, and Verification exception approval. Repair plan approval may use one row per repair round. Every ledger cell must be filled; use `not_applicable` where a gate or field does not apply instead of leaving cells blank.
