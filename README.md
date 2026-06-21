@@ -148,4 +148,8 @@ Harness reasoning effort is part of the workflow contract.
 ## 📚 More Docs
 
 - Full quickstart: [docs/quickstart/README.md](docs/quickstart/README.md)
+- Demo scenario: [docs/examples/docs-change.md](docs/examples/docs-change.md)
+- Demo scenario: [docs/examples/api-change.md](docs/examples/api-change.md)
+- Demo scenario: [docs/examples/security-sensitive-change.md](docs/examples/security-sensitive-change.md)
+- Demo scenario: [docs/examples/failed-review-repair-loop.md](docs/examples/failed-review-repair-loop.md)
 - Korean README: [README.ko.md](README.ko.md)
