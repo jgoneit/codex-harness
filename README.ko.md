@@ -18,7 +18,7 @@ Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approva
 | 🧩 역할 분리 | `Small`, `Non-trivial` 작업에서 planner, implementer, clean-context read-only reviewer를 분리합니다. |
 | 🛡️ 범위 제어 | implementer는 accepted Plan과 허용된 write boundary 안에서만 작업합니다. |
 | 🔎 Review | main agent의 자체 점검은 Review로 인정하지 않고, clean-context read-only reviewer가 확인합니다. |
-| 📋 Completion | verification, Review status, unresolved risks, follow-ups를 마지막에 남깁니다. |
+| 📋 Completion | Approval Ledger, verification, Review status, unresolved risks, follow-ups를 마지막에 남깁니다. |
 | 🧰 Hooks | Harness artifact 형식과 명백히 위험한 command pattern을 최소한으로 검사합니다. |
 
 ## ⚡ 2분 Quickstart
@@ -86,7 +86,7 @@ Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approva
 - **Orchestrator:** gate, subagent handoff, scope control, integration, 최종 Completion report를 관리합니다.
 - **Planner:** classification, current state, constraints, risks, acceptance criteria, verification strategy, implementation scope가 포함된 accepted Plan을 준비합니다.
 - **Implementer:** accepted file과 area 안에서만 변경하고, targeted verification을 실행하며, changed files, deviations, blocked checks, risk areas를 보고합니다. scope drift가 생기면 멈춥니다.
-- **Reviewer:** accepted Plan 기준으로 clean-context read-only Review를 수행하고 bug, missing tests, contract drift, security issue, performance risk, scope creep, rule violation을 찾습니다.
+- **Reviewer:** accepted Plan 기준으로 clean-context read-only Review를 수행하고, 필수 Review Matrix와 blocking findings/non-blocking findings를 분리해 반환합니다.
 
 ## 🧩 Subagent 활용 정책
 

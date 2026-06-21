@@ -18,7 +18,7 @@ Use it when a request is risky enough that planning, scoped implementation, and 
 | 🧩 Roles | Planner, implementer, and clean-context read-only reviewer are separated for `Small` and `Non-trivial` work. |
 | 🛡️ Scope control | Implementers stay inside the accepted Plan and allowed write boundary. |
 | 🔎 Review | Main-agent self-review does not count; Review must come from a clean-context read-only reviewer. |
-| 📋 Completion | Final output records verification, Review status, unresolved risks, and follow-ups. |
+| 📋 Completion | Final output records the Approval Ledger, verification, Review status, unresolved risks, and follow-ups. |
 | 🧰 Hooks | Minimal validators check Harness artifact shape and block obvious dangerous command patterns. |
 
 ## ⚡ 2-Minute Quickstart
@@ -86,7 +86,7 @@ When a task fits multiple categories, Harness chooses the higher-risk category.
 - **Orchestrator:** manages gates, subagent handoffs, scope control, integration, and the final Completion report.
 - **Planner:** drafts the accepted Plan with classification, current state, constraints, risks, acceptance criteria, verification strategy, and implementation scope.
 - **Implementer:** changes only the accepted files and areas, runs targeted verification, reports changed files, deviations, blocked checks, and risk areas, then stops on scope drift.
-- **Reviewer:** runs clean-context read-only Review against the accepted Plan and looks for bugs, missing tests, contract drift, security issues, performance risk, scope creep, and rule violations.
+- **Reviewer:** runs clean-context read-only Review against the accepted Plan and returns the required Review Matrix plus separated blocking and non-blocking findings.
 
 ## 🧩 Subagent Policy
 

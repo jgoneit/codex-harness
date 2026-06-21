@@ -29,6 +29,20 @@
 - Repair approval completed: Yes/No/Not required
 - Completion report completed: Yes/No
 
+## Approval Ledger
+
+Use columns exactly as shown. Do not leave any cells blank; use `not_applicable` where a gate or field does not apply. Add one Repair plan approval row per repair round when multiple rounds occur.
+
+| Gate | Required? | Requested? | User response | Result | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Plan approval | required | requested | y / non-y stopped / explicit revision or replan requested / blocked | approved / not_approved / blocked | Record exact gate outcome. |
+| Scope expansion approval | required / not_applicable | requested / not_applicable | user response / not_applicable | approved / denied / blocked / not_applicable | Required only when scope expansion is needed. |
+| Destructive command approval | required / not_applicable | requested / not_applicable | user response / not_applicable | approved / denied / blocked / not_applicable | Required before destructive commands. |
+| Secret/config access approval | required / not_applicable | requested / not_applicable | user response / not_applicable | approved / denied / blocked / not_applicable | Required before secret or protected config access. |
+| Direct DB access approval | required / not_applicable | requested / not_applicable | user response / not_applicable | approved / denied / blocked / not_applicable | Required before direct database access. |
+| Repair plan approval | required / not_applicable | requested / not_applicable | y / non-y stopped / explicit revision or replan requested / not_applicable / blocked | approved / not_approved / not_applicable / blocked | Use one row per repair round. |
+| Verification exception approval | required / not_applicable | requested / not_applicable | user response / not_applicable | approved / denied / blocked / not_applicable | Required when completing despite skipped or weakened verification. |
+
 ## Orchestration Summary
 
 - Required topology:

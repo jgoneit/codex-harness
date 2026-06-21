@@ -50,7 +50,7 @@ If the work needs new files, broader scope, destructive commands, secret access,
 
 ## 4. Wait for Review
 
-For `Small` and `Non-trivial` work, Review must be performed by a clean-context read-only reviewer. The reviewer checks the change against the accepted Plan and reports either concrete findings or this exact no-finding form:
+For `Small` and `Non-trivial` work, Review must be performed by a clean-context read-only reviewer. The reviewer checks the change against the accepted Plan, returns the required Review Matrix, and reports either concrete findings separated into blocking and non-blocking findings or this exact no-finding form:
 
 ```text
 No concrete findings. Residual verification risk:
@@ -79,6 +79,7 @@ Harness finishes with a Completion report covering:
 - verification performed
 - Review status
 - findings addressed
+- Approval Ledger
 - unresolved risks or follow-ups
 
 The Review status is one of:
