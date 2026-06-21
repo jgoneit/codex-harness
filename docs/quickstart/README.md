@@ -90,7 +90,20 @@ The Review status is one of:
 
 ## Configuration & Scope
 
-Projects can opt in to narrow soft-category relaxations with `.harness/guard.json`. Supported keys are `allow_db_local_connections`, a list of DB hosts such as `localhost` or `127.0.0.1`, and `allow_paths`, a list of project paths such as `tmp/` or `fixtures/`. Harness guard decisions are a defense-in-depth signal below Codex approval and sandboxing: allow rules only reduce false-positive friction for soft categories, currently `db_client_access`, and cannot relax hard-deny categories such as secret file reads, credential exfiltration, protected broad deletes, destructive Git commands, destructive SQL, or environment dumps.
+Projects can opt in to narrow soft-category relaxations and workflow metadata with `.harness/guard.json`.
+
+Supported allow keys are:
+
+- `allow_db_local_connections`: list of DB hosts such as `localhost` or `127.0.0.1`
+- `allow_paths`: list of project paths such as `tmp/` or `fixtures/`
+
+Supported workflow metadata keys are:
+
+- `verification_commands`: list of commands the project expects for verification
+- `review_required`: boolean marker that Review is required by project policy
+- `approval_required_paths`: list of paths that require extra project approval before modification
+
+Harness guard decisions are a defense-in-depth signal below Codex approval and sandboxing. Allow rules only reduce false-positive friction for soft categories, currently `db_client_access`, and cannot relax hard-deny categories such as secret file reads, credential exfiltration, protected broad deletes, destructive Git commands, destructive SQL, or environment dumps. Workflow metadata keys document project expectations; they do not change `PreToolUse` hard-deny or soft-relaxation decisions. Unknown keys or invalid values cause the guard to ignore the entire config and write a stderr warning.
 
 ## Example Prompt
 

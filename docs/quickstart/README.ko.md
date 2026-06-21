@@ -90,7 +90,20 @@ Review status는 다음 중 하나입니다.
 
 ## Configuration & Scope
 
-프로젝트는 `.harness/guard.json`으로 좁은 soft-category 완화를 opt-in할 수 있습니다. 지원 키는 `localhost` 또는 `127.0.0.1` 같은 DB host 목록인 `allow_db_local_connections`와 `tmp/` 또는 `fixtures/` 같은 project path 목록인 `allow_paths`입니다. Harness guard decision은 Codex approval과 sandboxing 아래의 defense-in-depth signal입니다. allow rule은 현재 `db_client_access` 같은 soft category의 false positive 마찰만 줄이며, secret file read, credential exfiltration, protected broad delete, destructive Git command, destructive SQL, environment dump 같은 hard-deny category는 완화할 수 없습니다.
+프로젝트는 `.harness/guard.json`으로 좁은 soft-category 완화와 workflow metadata를 opt-in할 수 있습니다.
+
+지원되는 allow key는 다음과 같습니다.
+
+- `allow_db_local_connections`: `localhost` 또는 `127.0.0.1` 같은 DB host 목록
+- `allow_paths`: `tmp/` 또는 `fixtures/` 같은 project path 목록
+
+지원되는 workflow metadata key는 다음과 같습니다.
+
+- `verification_commands`: 프로젝트가 기대하는 verification command 목록
+- `review_required`: project policy가 Review를 요구하는지 나타내는 boolean
+- `approval_required_paths`: 수정 전 추가 project approval이 필요한 path 목록
+
+Harness guard decision은 Codex approval과 sandboxing 아래의 defense-in-depth signal입니다. allow rule은 현재 `db_client_access` 같은 soft category의 false positive 마찰만 줄이며, secret file read, credential exfiltration, protected broad delete, destructive Git command, destructive SQL, environment dump 같은 hard-deny category는 완화할 수 없습니다. Workflow metadata key는 project expectation을 문서화할 뿐이며 `PreToolUse` hard-deny 또는 soft-relaxation decision을 바꾸지 않습니다. 알 수 없는 key나 잘못된 value가 있으면 guard는 전체 config를 무시하고 stderr warning을 씁니다.
 
 ## Example Prompt
 

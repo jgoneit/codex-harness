@@ -324,6 +324,80 @@ class PreToolUseConfigTests(PreToolUseAssertions):
                     write_guard_config(project, config)
                     self.assert_guard_decision(command, DEFAULT_TOOL, expected, project)
 
+    def test_metadata_keys_are_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(
+                project,
+                {
+                    "allow_db_local_connections": ["localhost"],
+                    "allow_paths": ["fixtures/"],
+                    "verification_commands": ["make test", "python -m unittest"],
+                    "review_required": True,
+                    "approval_required_paths": ["migrations/", "deploy/"],
+                },
+            )
+
+            result = run_pre_tool_use("psql -h localhost", DEFAULT_TOOL, project)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
+            self.assertEqual(result.stderr, "")
+
+    def test_invalid_metadata_values_fail_closed(self) -> None:
+        cases = [
+            (
+                {"allow_db_local_connections": ["localhost"], "verification_commands": "make test"},
+                "verification_commands must be a list of strings",
+            ),
+            (
+                {"allow_db_local_connections": ["localhost"], "verification_commands": ["make test", 7]},
+                "verification_commands must be a list of non-empty strings",
+            ),
+            (
+                {"allow_db_local_connections": ["localhost"], "review_required": "yes"},
+                "review_required must be a boolean",
+            ),
+            (
+                {"allow_db_local_connections": ["localhost"], "approval_required_paths": ["migrations/", ""]},
+                "approval_required_paths must be a list of non-empty strings",
+            ),
+        ]
+
+        for config, warning in cases:
+            with self.subTest(config=config):
+                with tempfile.TemporaryDirectory() as root:
+                    project = Path(root)
+                    write_guard_config(project, config)
+
+                    result = run_pre_tool_use("psql -h localhost", DEFAULT_TOOL, project)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
+                    self.assertIn("Harness guard config ignored", result.stderr)
+                    self.assertIn(warning, result.stderr)
+
+    def test_metadata_keys_do_not_relax_soft_or_hard_denies(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(
+                project,
+                {
+                    "verification_commands": ["psql -h localhost", "cat .env", "rm -rf .", "DROP TABLE t"],
+                    "review_required": False,
+                    "approval_required_paths": ["fixtures/", ".env", "."],
+                },
+            )
+            cases = [
+                "psql -h localhost",
+                "sqlite3 fixtures/app.db",
+                "cat .env",
+                "rm -rf .",
+                "DROP TABLE t",
+            ]
+
+            for command in cases:
+                with self.subTest(command=command):
+                    self.assert_guard_decision(command, DEFAULT_TOOL, BLOCK, project)
+
     def test_hard_denies_ignore_config(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             project = Path(root)
@@ -332,6 +406,9 @@ class PreToolUseConfigTests(PreToolUseAssertions):
                 {
                     "allow_db_local_connections": ["localhost", "prod.db"],
                     "allow_paths": ["fixtures/"],
+                    "verification_commands": ["cat .env", "rm -rf .", "DROP TABLE t"],
+                    "review_required": True,
+                    "approval_required_paths": [".env", "."],
                 },
             )
             cases = [
