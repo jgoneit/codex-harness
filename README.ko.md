@@ -81,6 +81,8 @@ Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approva
 
 여러 분류에 동시에 해당하면 Harness는 더 높은 risk 분류를 선택합니다.
 
+구체적인 예시는 [docs/classification-examples.md](docs/classification-examples.md)를 참고하세요.
+
 ## 👥 역할
 
 - **Orchestrator:** gate, subagent handoff, scope control, integration, 최종 Completion report를 관리합니다.

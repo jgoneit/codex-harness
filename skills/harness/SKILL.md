@@ -17,7 +17,21 @@ Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approva
 - Do not activate from ordinary requests, implicit inference, or documentation mentions.
 - Do not require Codex Plan Mode; run the Harness gates inside the conversation.
 - Do not assume stack, language, framework, database, test runner, or deployment platform.
-- Before planning, inspect local project rules such as `AGENTS.md`, `README.md`, `harness.md`, contributing docs, manifests, and local config.
+- Before planning, inspect local project rules such as `AGENTS.md`, `README.md`, contributing docs, manifests, and `.harness/guard.json` when present.
+
+## Instruction Precedence
+
+Apply instructions and conventions in this order:
+
+1. Explicit user instructions
+2. Harness workflow safety rules, including hard-deny rules and approval gates
+3. Project policy from `.harness/guard.json` policy keys
+4. Local repo docs such as `README.md`, `AGENTS.md`, and contributing docs
+5. Inferred conventions
+
+Planning reads `.harness/guard.json` policy keys at the start. `.harness/guard.json` is the only Harness project policy/config file; do not infer `harness.md`, `.harnessrc.yaml`, or other project policy file conventions. Project policy cannot weaken Harness workflow safety rules. Destructive operations and secret or protected-config work need explicit approval regardless of project policy.
+
+For concrete task sizing examples, see [classification examples](../../docs/classification-examples.md).
 
 ## Required Reference Loading
 
@@ -62,7 +76,7 @@ Proceed with this Repair Plan? [y/N]
 
 ## Loop
 
-1. Inspect local project rules and the user request.
+1. Inspect local project rules, `.harness/guard.json` policy keys, and the user request.
 2. Classify the task as `Tiny`, `Small`, or `Non-trivial`.
 3. For `Small` or larger tasks, define subagent topology.
 4. Produce a Plan artifact and ask for Plan approval.

@@ -81,6 +81,8 @@ For the full step-by-step guide, see [docs/quickstart/README.md](docs/quickstart
 
 When a task fits multiple categories, Harness chooses the higher-risk category.
 
+For concrete examples, see [docs/classification-examples.md](docs/classification-examples.md).
+
 ## 👥 Roles
 
 - **Orchestrator:** manages gates, subagent handoffs, scope control, integration, and the final Completion report.

@@ -59,7 +59,11 @@ NOSQL_CLIENTS = {"mongosh", "mongo", "redis-cli"}
 DB_CLIENTS = SQL_CLIENTS | NOSQL_CLIENTS
 DB_CLIENT_INFORMATION_ARGS = {"--version", "-V", "--help"}
 GUARD_CONFIG_RELATIVE_PATH = ".harness/guard.json"
-GUARD_CONFIG_KEYS = {"allow_db_local_connections", "allow_paths"}
+GUARD_CONFIG_ALLOW_KEYS = {"allow_db_local_connections", "allow_paths"}
+GUARD_CONFIG_METADATA_LIST_KEYS = {"verification_commands", "approval_required_paths"}
+GUARD_CONFIG_METADATA_BOOL_KEYS = {"review_required"}
+GUARD_CONFIG_LIST_KEYS = GUARD_CONFIG_ALLOW_KEYS | GUARD_CONFIG_METADATA_LIST_KEYS
+GUARD_CONFIG_KEYS = GUARD_CONFIG_LIST_KEYS | GUARD_CONFIG_METADATA_BOOL_KEYS
 SOFT_ALLOW_CATEGORIES = {"db_client_access"}
 SQL_IDENTIFIER = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"[^"]+"|`[^`]+`|\[[^\]]+\])'
 SQL_QUALIFIED_IDENTIFIER = rf"{SQL_IDENTIFIER}(?:\s*\.\s*{SQL_IDENTIFIER})*"
@@ -333,15 +337,21 @@ def block_pre_tool_use(category: str, explanation: str) -> None:
     )
 
 
-def empty_guard_config() -> dict[str, tuple[str, ...]]:
-    return {"allow_db_local_connections": (), "allow_paths": ()}
+def empty_guard_config() -> dict[str, tuple[str, ...] | bool]:
+    return {
+        "allow_db_local_connections": (),
+        "allow_paths": (),
+        "verification_commands": (),
+        "review_required": False,
+        "approval_required_paths": (),
+    }
 
 
 def warn_config_ignored(message: str) -> None:
     sys.stderr.write(f"Harness guard config ignored: {message}\n")
 
 
-def load_guard_config(config_path: Path | None = None) -> dict[str, tuple[str, ...]]:
+def load_guard_config(config_path: Path | None = None) -> dict[str, tuple[str, ...] | bool]:
     path = config_path if config_path is not None else Path.cwd() / GUARD_CONFIG_RELATIVE_PATH
     config = empty_guard_config()
     if not path.exists():
@@ -362,8 +372,8 @@ def load_guard_config(config_path: Path | None = None) -> dict[str, tuple[str, .
         warn_config_ignored(f"{path}: unknown key(s): {', '.join(unknown_keys)}")
         return config
 
-    loaded: dict[str, tuple[str, ...]] = {}
-    for key in sorted(GUARD_CONFIG_KEYS):
+    loaded: dict[str, tuple[str, ...] | bool] = {}
+    for key in sorted(GUARD_CONFIG_LIST_KEYS):
         value = raw_config.get(key, [])
         if not isinstance(value, list):
             warn_config_ignored(f"{path}: {key} must be a list of strings")
@@ -375,6 +385,12 @@ def load_guard_config(config_path: Path | None = None) -> dict[str, tuple[str, .
                 return config
             items.append(item.strip())
         loaded[key] = tuple(items)
+    for key in sorted(GUARD_CONFIG_METADATA_BOOL_KEYS):
+        value = raw_config.get(key, False)
+        if not isinstance(value, bool):
+            warn_config_ignored(f"{path}: {key} must be a boolean")
+            return config
+        loaded[key] = value
     return loaded
 
 
