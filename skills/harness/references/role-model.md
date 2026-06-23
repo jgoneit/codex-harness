@@ -1,6 +1,6 @@
 # Role Model
 
-Ralph Loop roles are separated. For `Small` and larger tasks, separation must be implemented through actual subagent orchestration when tooling allows it.
+Harness workflow loop roles are separated. For `Small` and larger tasks, separation must be implemented through actual subagent orchestration when tooling allows it.
 
 ## Orchestrator
 
