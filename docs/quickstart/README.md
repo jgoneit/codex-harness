@@ -17,6 +17,10 @@ Update the public docs for the payment retry behavior.
 
 Harness is intended for explicit `$harness` invocation. Current limitation: the hook trigger checks for the `$harness` token/substring anywhere in the submitted prompt, so documentation mentions containing `$harness` can also receive active Harness context.
 
+### Optional: Start From Connector Context
+
+When a task starts from an external issue, pull request, CI summary, or review thread, treat that connector context as evidence only. Summarize only relevant title/body, acceptance criteria, comments, changed files, diff summary, CI status summary, or review comments; exclude secrets, private data, unrelated comments, noisy logs, and unrelated history. Compare the connector context with current git state, worktree state, and `.harness/` state before planning or Review. See [docs/contracts/connector-integration.md](../contracts/connector-integration.md).
+
 ## 2. Review the Plan
 
 Harness first inspects local project rules and classifies the task as `Tiny`, `Small`, or `Non-trivial`.
@@ -105,6 +109,8 @@ The Review status is one of:
 - `clean_context_review_completed`
 - `review_not_required_tiny_only`
 - `review_blocked_degraded`
+
+After Completion, Harness can draft a sanitized External Summary for an issue, pull request, ticket, or team thread. The summary should cover changed files or areas, verification, Review result, repairs, and residual risks, but posting it externally still requires human review unless explicit project policy allows otherwise.
 
 ## Configuration & Scope
 

@@ -189,6 +189,7 @@ Harness reasoning effort is part of the workflow contract.
 
 - Full quickstart: [docs/quickstart/README.md](docs/quickstart/README.md)
 - Workflow contract: [docs/contracts/harness-contract.md](docs/contracts/harness-contract.md)
+- Connector integration contract: [docs/contracts/connector-integration.md](docs/contracts/connector-integration.md)
 - Worktree Isolation contract: [docs/contracts/worktree-isolation.md](docs/contracts/worktree-isolation.md)
 - Sub-agent handoff contract: [docs/contracts/subagent-handoff.md](docs/contracts/subagent-handoff.md)
 - Demo scenario: [docs/examples/docs-change.md](docs/examples/docs-change.md)
