@@ -2,7 +2,7 @@
 
 This is an illustrative scenario, not an actual execution transcript. Sample user responses, statuses, review evidence, and verification notes below are illustrative only.
 
-This example shows a Tiny-to-Small documentation change with only the simple Plan gate approved. The full Harness loop is Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion; in this illustrative path, Review finds no must-fix issue, so repair phases are recorded as `not_applicable`.
+This example shows a Tiny-to-Small documentation change with only the simple Harness Plan gate approved. The full Harness loop is Harness Plan -> Execute approval -> Implement -> Clean-context Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion Report; in this illustrative path, Clean-context Review returns `PASS`, so repair phases are recorded as `not_applicable`.
 
 ## User Request
 
@@ -19,13 +19,13 @@ Constraints:
 
 ## Task Classification
 
-- Classification: Small, from a Tiny-shaped docs edit escalated by explicit Harness review expectations.
+- Classification: Small, from a Tiny-shaped docs edit classified as Small because explicit Harness review expectations apply.
 - Reason: The requested change is a narrow public README wording update, but the workflow asks Harness to separate planning, implementation, and clean-context review.
-- Required gates: Plan approval, Implement, Review, Completion. Repair Plan and Repair Implement are only entered if Review finds a must-fix issue.
+- Required gates: Plan approval, Implement, Clean-context Review, Completion Report. Repair Plan and Repair Implement are only entered if Review returns `REPAIR_REQUIRED`.
 
-## Plan Shape
+## Harness Plan Shape
 
-Illustrative Plan excerpt:
+Illustrative Harness Plan excerpt:
 
 - Scope: edit only the specific README sentence about dry-run mode.
 - Non-goals: no CLI code, tests, hooks, packaging, release scripts, or behavior changes.
@@ -59,31 +59,23 @@ Illustrative implementer report shape:
 
 ## Review Result
 
-Illustrative partial Review Matrix:
+Illustrative Findings Table:
 
-| Criterion | Verdict | Evidence | Residual Risk |
+| Severity | Finding | Evidence | Required Action |
 | --- | --- | --- | --- |
-| Scope compliance | pass | Illustrative evidence: changed file list contains only `README.md`. | not_applicable |
-| Acceptance criteria satisfaction | pass | Illustrative evidence: wording is clearer and command meaning is unchanged. | not_applicable |
-| Test coverage / verification fidelity | pass | Illustrative evidence: raw Markdown and diff inspection match the docs-only acceptance criteria. | not_applicable |
-| Security / secret handling | not_applicable | Illustrative evidence: no security behavior, credentials, or protected config involved. | not_applicable |
-| Data / DB risk | not_applicable | Illustrative evidence: no database, migration, or stored data path involved. | not_applicable |
-| Bypass surface | not_applicable | Illustrative evidence: no hook, guard, approval, or runtime bypass behavior changed. | not_applicable |
-| API or contract drift | not_applicable | Illustrative evidence: no public API, schema, or CLI flag contract changed. | not_applicable |
-| Maintainability / normalization consistency | pass | Illustrative evidence: README style remains consistent with nearby prose. | not_applicable |
+| not_applicable | No findings requiring action. | Illustrative evidence: changed file list contains only `README.md`, wording is clearer, and command meaning is unchanged. | No action required. |
 
-Illustrative reviewer finding summary:
+Illustrative Verdict:
 
 ```text
-No concrete findings. Residual verification risk:
-- Rendered Markdown was not checked in a browser preview in this illustrative path.
+PASS
 ```
 
 ## Repair Plan If Needed
 
 No Repair Plan is needed in this illustrative path.
 
-If a future Review found a must-fix issue, Harness would write a Repair Plan before any repair implementation and use this exact prompt:
+If a future Review returned `REPAIR_REQUIRED`, Harness would write a Repair Plan before any repair implementation and use this exact prompt:
 
 ```text
 Proceed with this Repair Plan? [y/N]
@@ -109,5 +101,5 @@ Illustrative partial Approval Ledger:
 | Destructive command approval | not_applicable | not_applicable | not_applicable | not_applicable | No destructive command requested. |
 | Secret/config access approval | not_applicable | not_applicable | not_applicable | not_applicable | No secret or protected config access requested. |
 | Direct DB access approval | not_applicable | not_applicable | not_applicable | not_applicable | No direct database access requested. |
-| Repair plan approval | not_applicable | not_applicable | not_applicable | not_applicable | Review produced no must-fix findings. |
+| Repair plan approval | not_applicable | not_applicable | not_applicable | not_applicable | Review returned `PASS`; no repair was required. |
 | Verification exception approval | not_applicable | not_applicable | not_applicable | not_applicable | Verification matched the accepted docs-only plan. |

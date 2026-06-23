@@ -13,21 +13,21 @@ Update the public docs for the payment retry behavior.
 
 Harness는 `$harness`를 명시적으로 호출하는 방식으로 사용하도록 의도되어 있습니다. 현재 제한: hook trigger는 제출된 prompt 안에 `$harness` token/substring이 있는지만 확인하므로, `$harness`가 포함된 문서 설명도 Harness active context를 받을 수 있습니다.
 
-## 2. Plan 검토하기
+## 2. Harness Plan 검토하기
 
 Harness는 먼저 local project rules를 확인하고 작업을 `Tiny`, `Small`, `Non-trivial`로 분류합니다.
 
-`Small`과 `Non-trivial` 작업에서는 planner role이 다음 내용을 포함한 Plan을 만듭니다.
+`Small`과 `Non-trivial` 작업에서는 planner role이 다음 내용을 포함한 Harness Plan을 만듭니다.
 
-- classification
-- requirements and current state
-- constraints and risks
-- acceptance criteria
-- verification strategy
-- orchestration topology
-- implementation scope
+- task classification and risk level
+- reasoning for classification
+- in-scope and out-of-scope boundaries
+- files or areas to inspect
+- proposed change plan
+- verification plan
+- risks and assumptions
 
-Plan은 반드시 다음 문장으로 끝나야 합니다.
+Harness Plan의 Approval Gate에는 다음 정확한 prompt가 포함되어야 합니다.
 
 ```text
 Proceed with this Plan? [y/N]
@@ -37,31 +37,33 @@ Proceed with this Plan? [y/N]
 
 ## 3. Implement를 허용된 범위 안에서 실행하기
 
-정확한 Plan approval 이후 Harness는 accepted scope와 write boundary만 implementer에게 전달합니다. implementer는 다음을 보고합니다.
+정확한 Plan approval 이후 Harness는 accepted scope와 write boundary만 implementer에게 전달합니다. implementer는 Implementation Summary로 다음을 보고합니다.
 
-- identity and domain
-- files changed
-- implementation summary
+- accepted Plan reference
+- changed files
+- summary of changes
+- scope compliance
 - verification performed
-- blocked checks
-- deviations or risk areas
+- deviations from Plan
+- blockers or residual risks
 
 accepted Plan 밖에서 새 파일, 더 넓은 범위, destructive command, secret access, deployment, production-impact operation이 필요해지면 Harness는 조용히 범위를 넓히지 않고 새 gate를 위해 멈춥니다.
 
 ## 4. Review 기다리기
 
-`Small`과 `Non-trivial` 작업에서 Review는 clean-context read-only reviewer가 수행해야 합니다. reviewer는 변경이 accepted Plan과 일치하는지 확인하고, 필수 Review Matrix를 반환하며, concrete findings를 blocking findings와 non-blocking findings로 분리하거나 다음 정확한 no-finding 형식을 반환합니다.
+`Small`과 `Non-trivial` 작업에서 Clean-context Review는 clean-context read-only reviewer가 수행해야 합니다. reviewer는 변경이 accepted Plan과 일치하는지 확인하고, Findings Table과 Verdict를 반환합니다.
 
 ```text
-No concrete findings. Residual verification risk:
-- ...
+| Severity | Finding | Evidence | Required Action |
 ```
+
+Verdict는 `PASS`, `PASS_WITH_NOTES`, `REPAIR_REQUIRED`, `BLOCKED` 중 하나입니다.
 
 main agent의 자체 점검은 Review로 인정되지 않습니다.
 
 ## 5. 필요한 경우에만 Repair 승인하기
 
-Review에서 must-fix issue가 나오면 Harness는 Repair Plan을 작성합니다. Repair 작업에는 다음 정확한 prompt가 필요합니다.
+Review Verdict가 `REPAIR_REQUIRED`이면 Harness는 Repair Plan을 작성합니다. Repair 작업에는 다음 정확한 prompt가 필요합니다.
 
 ```text
 Proceed with this Repair Plan? [y/N]
@@ -71,16 +73,24 @@ Proceed with this Repair Plan? [y/N]
 
 ## 6. Completion Report 확인하기
 
-Harness는 마지막에 다음 내용을 포함한 Completion report를 냅니다.
+Harness는 마지막에 다음 내용을 포함한 Completion Report를 냅니다.
 
-- task classification
-- orchestration topology and spawned roles
-- implemented changes
-- verification performed
+- status
 - Review status
-- findings addressed
+- whether a Repair Plan was required
+- changed files
+- verification
+- Review result
 - Approval Ledger
 - unresolved risks or follow-ups
+
+Completion status는 다음 중 하나입니다.
+
+- `completed`
+- `completed_with_residual_risk`
+- `blocked`
+- `degraded`
+- `cancelled`
 
 Review status는 다음 중 하나입니다.
 
