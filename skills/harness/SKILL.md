@@ -1,11 +1,11 @@
 ---
 name: harness
-description: Use only on explicit $harness invocation. Runs the Harness Ralph Loop with classification, Plan approval, role-separated Implement, clean-context Review, Repair Plan approval, and Completion gates. Trigger when the user explicitly invokes $harness for controlled implementation or review workflows; do not use for ordinary requests, documentation mentions, or implicit inference.
+description: Use only on explicit $harness invocation. Runs the Harness workflow loop with classification, Plan approval, role-separated Implement, clean-context Review, Repair Plan approval, and Completion gates. Trigger when the user explicitly invokes $harness for controlled implementation or review workflows; do not use for ordinary requests, documentation mentions, or implicit inference.
 ---
 
 # Harness
 
-`$harness` is a Codex execution router for the team Ralph Loop. Default explanation language is Korean; fixed workflow terms stay in English.
+`$harness` is a Codex execution router for the Harness workflow loop. Default explanation language is Korean; fixed workflow terms stay in English.
 
 ```text
 Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion
