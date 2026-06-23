@@ -171,7 +171,11 @@ For public releases, attach `dist/harness.zip` as the GitHub release artifact.
 
 ## ⚠️ Current Limitation
 
-The prompt hook currently checks for the `$harness` token or substring anywhere in the submitted prompt. That means documentation work that includes the literal token can also receive active Harness context.
+The Harness guard is a denylist-based advisory heuristic, not a security boundary. It blocks known dangerous patterns that its validators recognize, and unrecognized inputs fail open by design. This means fail-open behavior is a structural limit of the guard, not a bug.
+
+The test suite's [`KNOWN_FALSE_NEGATIVE_GAPS`](tests/test_harness_guard_pre_tool_use.py#L160) cases intentionally document examples of this limit. They cover patterns that policy should treat as unsafe but a denylist can miss because they require runtime decoding, variable resolution, embedded interpreter analysis, or coverage of an unbounded set of command forms.
+
+Harness still does not replace sandboxing, least-privilege permissions, project-specific security controls, automated verification, code review, or human judgment. Separately, the prompt hook currently checks for the `$harness` token or substring anywhere in the submitted prompt, so documentation work that includes the literal token can also receive active Harness context.
 
 ## 🧠 Reasoning Effort
 
