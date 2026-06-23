@@ -32,11 +32,13 @@ Apply instructions and conventions in this order:
 Planning reads `.harness/guard.json` policy keys at the start. `.harness/guard.json` is the only Harness project policy/config file; do not infer `harness.md`, `.harnessrc.yaml`, or other project policy file conventions. Project policy cannot weaken Harness workflow safety rules. Destructive operations and secret or protected-config work need explicit approval regardless of project policy.
 
 For concrete task sizing examples, see [classification examples](../../docs/classification-examples.md).
+For the authoritative workflow artifact contract, see [Harness workflow contract](../../docs/contracts/harness-contract.md).
 
 ## Required Reference Loading
 
 Read the relevant references before acting:
 
+- Always follow `../../docs/contracts/harness-contract.md` for canonical artifact sections, approval gates, Review rules, and Completion statuses.
 - Always read `references/classification-policy.md`, `references/phase-contracts.md`, `references/orchestrator-harness.md`, `references/subagent-policy.md`, `references/model-policy.md`, and `references/completion-policy.md`.
 - For planning, read `references/planner-harness.md` and use `assets/templates/plan.md`.
 - For implementation, read `references/implementer-harness.md` and use `assets/templates/implement.md`.
@@ -70,7 +72,7 @@ Proceed with this Repair Plan? [y/N]
 - Only lowercase `y` approves execution of the accepted Repair Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not repair, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
 - Only a clean-context read-only reviewer subagent can complete Review.
 - Main-agent self-review is not Review.
-- Required gate failure must be recorded as `blocked_degraded` or escalated.
+- Required gate failure must be recorded as blocked or degraded.
 - Dangerous operations require separate approval.
 - A Completion report is required.
 
@@ -82,7 +84,7 @@ Proceed with this Repair Plan? [y/N]
 4. Produce a Plan artifact and ask for Plan approval.
 5. If the user replies exactly `y`, implement only the accepted Plan; otherwise stop unless the user explicitly asks to revise/replan.
 6. For `Small` or larger tasks, run clean-context read-only reviewer Review.
-7. If Review has findings, produce a Repair Plan and ask for repair approval.
+7. If Review has findings requiring repair, produce a Repair Plan and ask for repair approval.
 8. If the user replies exactly `y`, implement only the accepted Repair Plan and repeat the bounded Review/Repair loop if required; otherwise stop unless the user explicitly asks to revise/replan.
 9. Produce the Completion report with status, verification, risks, and follow-ups.
 

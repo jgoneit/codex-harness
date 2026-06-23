@@ -9,6 +9,7 @@
 - Implementation and repair still require exact `[y/N]` approval gates. Only lowercase `y` approves execution. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not implement, repair, revise, or replan unless the user explicitly asks to revise/replan.
 - Every subagent receives a bounded brief.
 - Subagent output is evidence; final judgment and integration remain orchestrator responsibility.
+- The clean-context reviewer must be read-only, compare the diff against the accepted Plan, flag undocumented scope expansion, and avoid relying on implementer intent.
 
 ## Required Topology
 
@@ -21,13 +22,13 @@
 - See `references/model-policy.md` for the authoritative Harness model and reasoning effort policy.
 - Project-level minimum is `model_reasoning_effort = "high"` to prevent silent fallback below high.
 - Planner requires high or above and must record intended/actual reasoning effort and fallback decision in the Plan.
-- Implementer requires xhigh. If xhigh is unavailable, prefer switching to an xhigh-capable Codex model; if not possible, explicitly record high fallback and either record `blocked_degraded` or request user approval before continuing.
+- Implementer requires xhigh. If xhigh is unavailable, prefer switching to an xhigh-capable Codex model; if not possible, explicitly record high fallback and either record a blocked or degraded run state, or request user approval before continuing.
 - Reviewer requires xhigh. If xhigh is unavailable, prefer switching to an xhigh-capable Codex model; if not possible, explicitly record high fallback and either record `review_blocked_degraded` or request user approval before continuing.
 - Do not use medium, low, or minimal reasoning effort for Harness workflow roles.
 
 ## Authorization
 
-Use `policy preauthorization` for required Harness subagents unless environment, tooling, security, or project rules require explicit approval. If delegation fails, record the affected role as `blocked_degraded`.
+Use `policy preauthorization` for required Harness subagents unless environment, tooling, security, or project rules require explicit approval. If delegation fails, record the affected role or gate as blocked or degraded.
 
 ## Brief Requirements
 
@@ -51,6 +52,7 @@ When a required subagent cannot complete, record:
 - criteria applied
 - risk observations or the exact no-review statement
 - degraded independence statement
+- residual risk and required user decision or external state change
 
 Required no-review statement:
 

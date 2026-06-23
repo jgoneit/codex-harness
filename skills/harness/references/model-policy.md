@@ -16,4 +16,4 @@ Harness reasoning effort is part of the workflow contract.
 
 1. If `xhigh` is unsupported, fallback to `high`.
 2. Prefer switching to an `xhigh`-capable Codex model.
-3. If neither is possible, record `blocked_degraded` or ask for user approval.
+3. If neither is possible, record a blocked or degraded run state, or `review_blocked_degraded` when specifically reporting unavailable required Review, or ask for user approval.

@@ -4,6 +4,8 @@ This quickstart shows how to use Harness once the plugin is available in Codex.
 
 First-time users should package, install, and load the plugin for their Codex CLI environment before following this guide. See the top-level [README](../../README.md) for the supported packaging prerequisites, `make package`, and the `dist/harness.zip` artifact.
 
+For the full workflow contract, including canonical artifact sections, approval gates, blocked/degraded behavior, and status values, see [docs/contracts/harness-contract.md](../contracts/harness-contract.md).
+
 ## 1. Invoke Harness Explicitly
 
 Start a request with `$harness` or include it clearly in the task:
@@ -21,15 +23,15 @@ Harness first inspects local project rules and classifies the task as `Tiny`, `S
 
 For `Small` and `Non-trivial` tasks, Harness uses a planner role to produce a Plan with:
 
-- classification
-- requirements and current state
-- constraints and risks
-- acceptance criteria
-- verification strategy
-- orchestration topology
-- implementation scope
+- task classification and risk level
+- reasoning for classification
+- in-scope and out-of-scope boundaries
+- files or areas to inspect
+- proposed change plan
+- verification plan
+- risks and assumptions
 
-The Plan must end with:
+The Plan Approval Gate must include:
 
 ```text
 Proceed with this Plan? [y/N]
@@ -39,31 +41,33 @@ Reply with exactly `y` to approve. Any other response leaves the Plan unapproved
 
 ## 3. Let Implement Run Inside Scope
 
-After exact Plan approval, Harness gives the implementer only the accepted scope and write boundary. The implementer reports:
+After exact Plan approval, Harness gives the implementer only the accepted scope and write boundary. The Implementation Summary reports:
 
-- identity and domain
-- files changed
-- implementation summary
+- accepted Plan reference
+- changed files
+- summary of changes
+- scope compliance
 - verification performed
-- blocked checks
-- deviations or risk areas
+- deviations from Plan
+- blockers or residual risks
 
 If the work needs new files, broader scope, destructive commands, secret access, deployment, or production-impact operations outside the accepted Plan, Harness stops for a new gate instead of silently expanding scope.
 
 ## 4. Wait for Review
 
-For `Small` and `Non-trivial` work, Review must be performed by a clean-context read-only reviewer. The reviewer checks the change against the accepted Plan, returns the required Review Matrix, and reports either concrete findings separated into blocking and non-blocking findings or this exact no-finding form:
+For `Small` and `Non-trivial` work, Review must be performed by a clean-context read-only reviewer. The reviewer compares the diff against the accepted Plan, does not rely on implementer intent, must not modify files, flags undocumented scope expansion, and returns a Findings Table with this shape:
 
 ```text
-No concrete findings. Residual verification risk:
-- ...
+| Severity | Finding | Evidence | Required Action |
 ```
+
+The Review verdict is one of `PASS`, `PASS_WITH_NOTES`, `REPAIR_REQUIRED`, or `BLOCKED`.
 
 Main-agent self-review does not count as Review.
 
 ## 5. Approve Repairs Only When Needed
 
-If Review finds must-fix issues, Harness writes a Repair Plan. Repair work requires this exact prompt:
+If Review finds must-fix issues, Harness writes a Repair Plan. The Repair Approval Gate must include this exact prompt:
 
 ```text
 Proceed with this Repair Plan? [y/N]
@@ -75,14 +79,22 @@ Reply with exactly `y` to approve repair implementation. Any other response leav
 
 Harness finishes with a Completion report covering:
 
-- task classification
-- orchestration topology and spawned roles
-- implemented changes
-- verification performed
+- status
 - Review status
-- findings addressed
+- whether a Repair Plan was required
+- changed files
+- verification
+- Review result
 - Approval Ledger
 - unresolved risks or follow-ups
+
+Completion status is one of:
+
+- `completed`
+- `completed_with_residual_risk`
+- `blocked`
+- `degraded`
+- `cancelled`
 
 The Review status is one of:
 

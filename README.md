@@ -10,7 +10,7 @@ Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approva
 
 Use it when a request is risky enough that planning, scoped implementation, and clean-context review should be separated: multi-file edits, workflow or policy updates, behavior changes, security-sensitive work, API or contract changes, and anything that benefits from explicit approval gates.
 
-Harness is not a sandbox, security boundary, or replacement for least-privilege permissions, code review, tests, or human judgment. This project is being shared early so people can experiment with the workflow and provide feedback.
+Harness is not a sandbox, security boundary, or replacement for least-privilege permissions, code review, tests, or human judgment. This project is being shared early so people can experiment with the workflow and provide feedback. The authoritative workflow contract is [docs/contracts/harness-contract.md](docs/contracts/harness-contract.md).
 
 ## 👥 Who Is This For?
 
@@ -29,7 +29,7 @@ It is usually not worth using for tiny, low-risk work such as spelling fixes, on
 | 🚦 Gates | Implementation and repair only run after exact approval prompts. |
 | 🧩 Roles | Planner, implementer, and clean-context read-only reviewer are separated for `Small` and `Non-trivial` work. |
 | 🛡️ Scope control | Implementers stay inside the accepted Plan and allowed write boundary. |
-| 🔎 Review | Main-agent self-review does not count; Review must come from a clean-context read-only reviewer. |
+| 🔎 Review | Main-agent self-review does not count; Review must come from a clean-context read-only reviewer and use the canonical findings table. |
 | 📋 Completion | Final output records the Approval Ledger, verification, Review status, unresolved risks, and follow-ups. |
 | 🧰 Hooks | Minimal validators check Harness artifact shape and block obvious dangerous command patterns. |
 
@@ -68,7 +68,7 @@ The exact Codex CLI plugin install/load command can differ by environment and is
    - Verify by inspecting the docs and running existing docs lint if available.
    ```
 
-2. Read the generated Plan. Harness classifies the work as `Tiny`, `Small`, or `Non-trivial`, then states the scope, risks, acceptance criteria, and verification path.
+2. Read the generated Plan. Harness classifies the work as `Tiny`, `Small`, or `Non-trivial`, then states the scope, risks, assumptions, proposed change plan, and verification path.
 
 3. Approve implementation only when the Plan is acceptable. The approval prompt must be exactly:
 
@@ -124,9 +124,9 @@ For concrete examples, see [docs/classification-examples.md](docs/classification
 ## 👥 Roles
 
 - **Orchestrator:** manages gates, subagent handoffs, scope control, integration, and the final Completion report.
-- **Planner:** drafts the accepted Plan with classification, current state, constraints, risks, acceptance criteria, verification strategy, and implementation scope.
+- **Planner:** drafts the accepted Plan with classification, risk level, in-scope and out-of-scope boundaries, proposed changes, verification strategy, and assumptions.
 - **Implementer:** changes only the accepted files and areas, runs targeted verification, reports changed files, deviations, blocked checks, and risk areas, then stops on scope drift.
-- **Reviewer:** runs clean-context read-only Review against the accepted Plan and returns the required Review Matrix plus separated blocking and non-blocking findings.
+- **Reviewer:** runs clean-context read-only Review against the accepted Plan and diff, returns the canonical findings table, and gives a `PASS`, `PASS_WITH_NOTES`, `REPAIR_REQUIRED`, or `BLOCKED` verdict.
 
 ## 🧩 Subagent Policy
 
@@ -140,7 +140,7 @@ For concrete examples, see [docs/classification-examples.md](docs/classification
 - Default subagent permission is read-only. Only implementers may receive write permission, and only inside the accepted scope.
 - Subagent output is evidence; the orchestrator remains responsible for final integration, conflict resolution, verification, and Completion.
 - Review is complete only when a clean-context read-only reviewer subagent completes it. Main-agent inspection is not Review.
-- If a required subagent cannot complete, Harness records the affected role or gate as `blocked_degraded`. If Review cannot run through the reviewer subagent, the Review status is `review_blocked_degraded`.
+- If a required subagent cannot complete, Harness records the affected role or gate as blocked or degraded. If Review cannot run through the reviewer subagent, the Review status is `review_blocked_degraded`.
 
 ## 🛡️ Hooks and Guardrails
 
@@ -183,11 +183,12 @@ Harness reasoning effort is part of the workflow contract.
 - `medium`, `low`, and `minimal` are not valid for Harness workflow roles.
 - If `xhigh` is unsupported, Harness falls back to `high`.
 - Harness prefers switching to an `xhigh`-capable Codex model before accepting fallback.
-- If neither `xhigh` nor a safe fallback path is available, Harness records `blocked_degraded`, records `review_blocked_degraded` for Review, or asks for user approval before continuing.
+- If neither `xhigh` nor a safe fallback path is available, Harness records the run as blocked or degraded, records `review_blocked_degraded` for Review, or asks for user approval before continuing.
 
 ## 📚 More Docs
 
 - Full quickstart: [docs/quickstart/README.md](docs/quickstart/README.md)
+- Workflow contract: [docs/contracts/harness-contract.md](docs/contracts/harness-contract.md)
 - Demo scenario: [docs/examples/docs-change.md](docs/examples/docs-change.md)
 - Demo scenario: [docs/examples/api-change.md](docs/examples/api-change.md)
 - Demo scenario: [docs/examples/security-sensitive-change.md](docs/examples/security-sensitive-change.md)

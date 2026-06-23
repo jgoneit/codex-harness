@@ -5,29 +5,50 @@
 - Harness run id:
 - Artifact id:
 - Phase: Completion
-- Artifact status: draft / accepted / revised / completed / blocked_degraded
+- Artifact status: draft / accepted / revised / completed / blocked / degraded
 - Created at:
 - Updated at:
 - Source request:
 - Task classification: Tiny / Small / Non-trivial
 - Related artifacts:
 
-## Summary
+## Status
 
-- Task classification:
+- Status: completed / completed_with_residual_risk / blocked / degraded / cancelled
+- Classification:
 - Outcome:
-- Completion status: completed / completed_with_residual_risk / completed_with_degraded_review / blocked / escalated
+- Reason:
 
-## Gate Summary
+## Review Status
 
-- Classification completed: Yes/No
-- Plan approval completed: Yes/No
-- Implement completed: Yes/No
-- Verification completed: Yes/No
 - Review status enum: clean_context_review_completed / review_not_required_tiny_only / review_blocked_degraded
-- Repair Plan required: Yes/No
-- Repair approval completed: Yes/No/Not required
-- Completion report completed: Yes/No
+- Reviewer subagent used? Yes/No:
+- Clean-context and read-only? Yes/No:
+- Degraded review reason, if any:
+
+## Repair Plan Required
+
+- Required? Yes/No:
+- Reason:
+- Repair approval completed? Yes/No/not_applicable:
+
+## Changed Files
+
+-
+
+## Verification
+
+- Commands/checks:
+- Results:
+- Evidence:
+- Blocked or skipped checks:
+
+## Review Result
+
+- Verdict: PASS / PASS_WITH_NOTES / REPAIR_REQUIRED / BLOCKED / not_applicable
+- Findings addressed:
+- Findings deferred:
+- Findings rejected:
 
 ## Approval Ledger
 
@@ -43,68 +64,22 @@ Use columns exactly as shown. Do not leave any cells blank; use `not_applicable`
 | Repair plan approval | required / not_applicable | requested / not_applicable | y / non-y stopped / explicit revision or replan requested / not_applicable / blocked | approved / not_approved / not_applicable / blocked | Use one row per repair round. |
 | Verification exception approval | required / not_applicable | requested / not_applicable | user response / not_applicable | approved / denied / blocked / not_applicable | Required when completing despite skipped or weakened verification. |
 
-## Orchestration Summary
-
-- Required topology:
-- Spawned subagents:
-- Role/domain assignment:
-- Policy preauthorization used? Yes/No:
-- Explicit approvals requested:
-- Plan approval response: y / non-y stopped / explicit revision or replan requested / blocked
-- Repair Plan approval response: y / non-y stopped / explicit revision or replan requested / not required / blocked
-- Blocked_degraded roles:
-- Integration conflicts:
-- Conflict resolution:
-
-## Implemented Changes
+## Residual Risks
 
 -
 
-## Verification Performed
+## Follow-up
 
-- Commands/checks:
-- Results:
-- Blocked checks:
-
-## Review Status
-
-- Machine-readable Review status enum is recorded in Gate Summary.
-- Required? Yes/No:
-- Entered? Yes/No:
-- Trigger:
-- Reviewer subagent used? Yes/No:
-- Reviewer subagent identity:
-- Findings addressed:
+-
 
 ## Blocked / Degraded Details
 
-Use only when a required role is `blocked_degraded` or Review status is `review_blocked_degraded`.
+Use only when Status is `blocked` or `degraded`, or when Review status is `review_blocked_degraded`.
 
 - Role or gate:
-- Fallback condition:
-- Reason subagent or clean-context Review was not completed:
-- Authorization result or blocker:
+- Blocker or degraded condition:
 - Evidence inspected:
 - Criteria applied:
 - Risk observations:
+- User decision or external state change needed:
 - Degraded independence statement:
-
-## Diff Inspection
-
-- Scope match:
-- Unexpected changes:
-- Risk areas:
-
-## Unresolved Risks
-
--
-
-## Follow-ups
-
--
-
-## Persistent Artifact Paths
-
-Use only when persistent artifacts were created.
-
--
