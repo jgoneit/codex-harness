@@ -119,7 +119,11 @@ Harness에는 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `SubagentStop`, 
 
 ## ⚠️ 현재 제한
 
-prompt hook은 제출된 prompt 안에 `$harness` token 또는 substring이 있는지만 확인합니다. 그래서 literal token이 포함된 문서 작업도 Harness active context를 받을 수 있습니다.
+Harness guard는 denylist 기반 보조 휴리스틱이며 security boundary가 아닙니다. validator가 인식하는 알려진 위험 pattern을 차단하고, 인식하지 못한 입력은 설계상 fail-open으로 통과합니다. 따라서 fail-open 동작은 guard의 구조적 한계이지 버그가 아닙니다.
+
+test suite의 [`KNOWN_FALSE_NEGATIVE_GAPS`](tests/test_harness_guard_pre_tool_use.py#L160)는 이 한계를 의도적으로 문서화한 사례입니다. policy상 unsafe로 보아야 하지만 runtime decoding, variable resolution, embedded interpreter analysis, 또는 한정할 수 없는 command form 전체의 coverage가 필요해서 denylist가 놓칠 수 있는 pattern을 포함합니다.
+
+Harness는 여전히 sandboxing, least-privilege permission, project-specific security control, automated verification, 코드리뷰, 사람의 판단을 대체하지 않습니다. 별도로, prompt hook은 제출된 prompt 안에 `$harness` token 또는 substring이 있는지만 확인하므로 literal token이 포함된 문서 작업도 Harness active context를 받을 수 있습니다.
 
 ## 🧠 Reasoning Effort
 

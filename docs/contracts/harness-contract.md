@@ -4,6 +4,14 @@ Harness is an early-stage workflow guardrail for Codex runs that need deliberate
 
 Harness is not a sandbox, security boundary, permission system, CI substitute, human review substitute, or guarantee that unsafe actions cannot occur. Repository permissions, least-privilege access, project policy, automated tests, code review, and human judgment remain required.
 
+## Guard Threat Model
+
+The Harness guard is a denylist-based advisory heuristic. It blocks known dangerous patterns that its validators recognize, and it allows unrecognized inputs to pass. This fail-open behavior is a structural result of denylist matching, not a bug or a security guarantee.
+
+The guard is therefore a supporting control for known-risk patterns, not a security boundary. It does not replace sandboxing, least-privilege permissions, project-specific security controls, automated verification, code review, or human judgment.
+
+The test suite's [`KNOWN_FALSE_NEGATIVE_GAPS`](../../tests/test_harness_guard_pre_tool_use.py#L160) cases intentionally document this structural limit: they identify patterns that should be considered unsafe by policy but can evade a denylist because they require runtime decoding, variable resolution, embedded interpreter analysis, or coverage of an unbounded set of command forms.
+
 This contract is authoritative for Harness workflow artifacts and phase gates. The canonical sub-agent handoff rules, including bounded briefs, `SubagentStop Summary` requirements, and role-collapse behavior, are defined in [Sub-agent Handoff Contract](subagent-handoff.md). Optional project-local continuity state is defined in [Memory & State Layer Contract](memory-state.md). Optional Git worktree hygiene for rollback and reviewability is defined in [Worktree Isolation Contract](worktree-isolation.md); it is not a sandbox, security boundary, permission system, or substitute for human review. Manual connector evidence intake and external-summary boundaries are defined in [Connector Integration Contract](connector-integration.md); connectors are external evidence sources, not approval or authority.
 
 ## Why The Workflow Exists
