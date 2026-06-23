@@ -51,3 +51,11 @@ Minimum gates:
 - Verification exception approval
 
 Every ledger cell must be filled. Use `not_applicable` for any gate or field that does not apply; do not leave cells blank. The ledger records gate decisions for a gated workflow and must not imply autonomous execution beyond accepted approvals.
+
+Approval ledger entries are historical evidence, not reusable permission. They are tied to the exact accepted Plan or accepted Repair Plan for that run. Scope expansion, destructive commands, secret/config access, direct DB access, repair implementation, and verification exceptions still require explicit approval when applicable in the active run.
+
+## Memory And State Updates
+
+When project-local `.harness/` memory files are present or user/project rules require persistent state, update them with concise sanitized summaries after Completion or before handoff. Use `assets/templates/state.md`, `assets/templates/approval-ledger.md`, `assets/templates/decisions.md`, `assets/templates/last-run.md`, and `assets/templates/handoff.md`.
+
+Do not put full process artifacts in `.harness/`. Harness process artifacts stay in conversation by default; persisted process artifacts use `.codex/harness/runs/<run-id>/` only when user or project rules require persistence.

@@ -17,7 +17,7 @@ Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approva
 - Do not activate from ordinary requests, implicit inference, or documentation mentions.
 - Do not require Codex Plan Mode; run the Harness gates inside the conversation.
 - Do not assume stack, language, framework, database, test runner, or deployment platform.
-- Before planning, inspect local project rules such as `AGENTS.md`, `README.md`, contributing docs, manifests, and `.harness/guard.json` when present.
+- Before planning, inspect local project rules such as `AGENTS.md`, `README.md`, contributing docs, manifests, and `.harness/guard.json` when present. Also inspect project-local Harness state files under `.harness/` when present.
 
 ## Instruction Precedence
 
@@ -31,6 +31,8 @@ Apply instructions and conventions in this order:
 
 Planning reads `.harness/guard.json` policy keys at the start. `.harness/guard.json` is the only Harness project policy/config file; do not infer `harness.md`, `.harnessrc.yaml`, or other project policy file conventions. Project policy cannot weaken Harness workflow safety rules. Destructive operations and secret or protected-config work need explicit approval regardless of project policy.
 
+Project-local Markdown files in `.harness/` are Memory & State evidence only. Read them before planning when available, compare them with the current user request and git state, mark stale conflicts, and ask for clarification when stale state conflicts with the current request. They are not policy and never provide reusable approval.
+
 For concrete task sizing examples, see [classification examples](../../docs/classification-examples.md).
 For the authoritative workflow artifact contract, see [Harness workflow contract](../../docs/contracts/harness-contract.md).
 
@@ -40,6 +42,7 @@ Read the relevant references before acting:
 
 - Always follow `../../docs/contracts/harness-contract.md` for canonical artifact sections, approval gates, Review rules, and Completion statuses.
 - Always follow `../../docs/contracts/subagent-handoff.md` for bounded sub-agent briefs, role handoffs, `SubagentStop Summary` fields, and role-collapse behavior.
+- Follow `../../docs/contracts/memory-state.md` when `.harness/` state files are present or project-local memory is requested; use `assets/templates/state.md`, `assets/templates/approval-ledger.md`, `assets/templates/decisions.md`, `assets/templates/last-run.md`, and `assets/templates/handoff.md` when initializing or updating those files.
 - Always read `references/classification-policy.md`, `references/phase-contracts.md`, `references/orchestrator-harness.md`, `references/subagent-policy.md`, `references/model-policy.md`, and `references/completion-policy.md`.
 - For planning, read `references/planner-harness.md` and use `assets/templates/plan.md`.
 - For implementation, read `references/implementer-harness.md` and use `assets/templates/implement.md`.
@@ -80,7 +83,7 @@ Proceed with this Repair Plan? [y/N]
 
 ## Loop
 
-1. Inspect local project rules, `.harness/guard.json` policy keys, and the user request.
+1. Inspect local project rules, `.harness/guard.json` policy keys, project-local `.harness/` state files when present, and the user request.
 2. Classify the task as `Tiny`, `Small`, or `Non-trivial`.
 3. For `Small` or larger tasks, define subagent topology.
 4. Produce a Plan artifact and ask for Plan approval.
