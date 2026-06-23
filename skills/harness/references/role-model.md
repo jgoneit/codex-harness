@@ -28,4 +28,4 @@ The improvement artifact is conditional. It records process, template, hook, or 
 
 ## Separation Rule
 
-Plan is not Review, Review is not fix, and Completion is not implementation. If required roles collapse into the main agent for `Small` or larger tasks, record `blocked_degraded`.
+Plan is not Review, Review is not fix, and Completion is not implementation. If required roles collapse into the main agent for `Small` or larger tasks, record the affected role or gate as blocked or degraded.

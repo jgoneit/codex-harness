@@ -33,7 +33,7 @@ These hooks are not a complete security boundary. The DB guardrail is determinis
 
 ## Limitations
 
-Hooks cannot convert orchestration failure into success. If required subagents are unavailable, record `blocked_degraded`. If clean-context reviewer Review is unavailable, record `review_blocked_degraded`.
+Hooks cannot convert orchestration failure into success. If required subagents are unavailable, record the affected role or gate as blocked or degraded. If clean-context reviewer Review is unavailable, record `review_blocked_degraded`.
 
 ## Future Work
 

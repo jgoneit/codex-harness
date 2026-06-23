@@ -2,7 +2,7 @@
 
 This is an illustrative scenario, not an actual execution transcript. Sample user responses, statuses, review evidence, and verification notes below are illustrative only.
 
-This example shows a Review failure that does not get fixed immediately. Harness first writes a Repair Plan, asks for repair approval, and only then performs Repair Implement. The full Harness loop is Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion.
+This example shows a Clean-context Review failure that does not get fixed immediately. Harness first writes a Repair Plan, asks for repair approval, and only then performs Repair Implement. The full Harness loop is Harness Plan -> Execute approval -> Implement -> Clean-context Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion Report.
 
 ## User Request
 
@@ -20,12 +20,12 @@ Constraints:
 ## Task Classification
 
 - Classification: Small
-- Reason: The task is local documentation work with clear acceptance criteria, but it affects public CLI behavior documentation and requires clean-context Review under Harness.
-- Required gates: Planner Plan, exact Plan approval, implementer, clean-context read-only Review, Repair Plan for must-fix findings, exact Repair approval, Repair Implement, follow-up Review, and Completion.
+- Reason: The task is local documentation work with clear acceptance criteria, but it affects public CLI behavior documentation and requires Clean-context Review under Harness.
+- Required gates: Planner Harness Plan, exact Plan approval, implementer, Clean-context Review, Repair Plan for findings requiring action, exact Repair approval, Repair Implement, follow-up Clean-context Review, and Completion Report.
 
-## Plan Shape
+## Harness Plan Shape
 
-Illustrative Plan excerpt:
+Illustrative Harness Plan excerpt:
 
 - Scope: update only the CLI usage docs for retry behavior and retry exit code descriptions.
 - Non-goals: no runtime behavior changes, no tests, no hooks, no packaging, no release scripts.
@@ -59,26 +59,17 @@ Illustrative implementer report shape:
 
 ## Review Result
 
-Illustrative partial Review Matrix before repair:
+Illustrative Findings Table before repair:
 
-| Criterion | Verdict | Evidence | Residual Risk |
+| Severity | Finding | Evidence | Required Action |
 | --- | --- | --- | --- |
-| Scope compliance | pass | Illustrative evidence: changed file list contains only `docs/cli/retries.md`. | not_applicable |
-| Acceptance criteria satisfaction | fail | Illustrative evidence: retry count behavior is described, but retry exhaustion exit code is omitted. | Users may still not know how automation should detect retry exhaustion. |
-| Test coverage / verification fidelity | pass | Illustrative evidence: raw Markdown diff inspection is appropriate for docs-only scope. | not_applicable |
-| Security / secret handling | not_applicable | Illustrative evidence: no security behavior, credentials, or protected config involved. | not_applicable |
-| Data / DB risk | not_applicable | Illustrative evidence: no database, migration, stored data, or direct DB access involved. | not_applicable |
-| Bypass surface | not_applicable | Illustrative evidence: no hook, guard, approval, or runtime bypass behavior changed. | not_applicable |
-| API or contract drift | pass | Illustrative evidence: wording does not add a new flag or changed default. | not_applicable |
-| Maintainability / normalization consistency | pass | Illustrative evidence: wording follows the existing CLI docs style. | not_applicable |
+| High | Retry exhaustion exit code documentation is missing. | Illustrative evidence: `docs/cli/retries.md` describes retry attempts but omits the retry exhaustion exit code required by the accepted Plan. | Add the retry exhaustion exit code note without changing runtime behavior or widening scope. |
 
-Concrete reviewer finding:
+Illustrative Verdict:
 
-- Severity: blocking
-- Evidence: illustrative Review found that `docs/cli/retries.md` described retry attempts but did not document the retry exhaustion exit code required by the accepted Plan.
-- Why it matters: the implementation does not satisfy an explicit acceptance criterion.
-- Suggested action: add the retry exhaustion exit code note without changing runtime behavior or widening scope.
-- Must fix now?: yes
+```text
+REPAIR_REQUIRED
+```
 
 ## Repair Plan
 
@@ -118,24 +109,16 @@ Illustrative repair implementer report shape:
 
 ## Follow-Up Review Result
 
-Illustrative partial Review Matrix after repair:
+Illustrative Findings Table after repair:
 
-| Criterion | Verdict | Evidence | Residual Risk |
+| Severity | Finding | Evidence | Required Action |
 | --- | --- | --- | --- |
-| Scope compliance | pass | Illustrative evidence: original and repair changes remain limited to `docs/cli/retries.md`. | not_applicable |
-| Acceptance criteria satisfaction | pass | Illustrative evidence: retry count behavior and retry exhaustion exit code are both documented. | not_applicable |
-| Test coverage / verification fidelity | pass | Illustrative evidence: raw Markdown diff inspection matches the docs-only accepted Plan and Repair Plan. | not_applicable |
-| Security / secret handling | not_applicable | Illustrative evidence: no security behavior, credentials, or protected config involved. | not_applicable |
-| Data / DB risk | not_applicable | Illustrative evidence: no database, migration, stored data, or direct DB access involved. | not_applicable |
-| Bypass surface | not_applicable | Illustrative evidence: no hook, guard, approval, or runtime bypass behavior changed. | not_applicable |
-| API or contract drift | pass | Illustrative evidence: docs describe existing retry behavior and do not invent a new CLI option. | not_applicable |
-| Maintainability / normalization consistency | pass | Illustrative evidence: repair wording follows the same CLI docs style. | not_applicable |
+| not_applicable | No findings requiring action. | Illustrative evidence: retry count behavior and retry exhaustion exit code are both documented, and original plus repair changes remain limited to `docs/cli/retries.md`. | No action required. |
 
-Illustrative follow-up reviewer finding summary:
+Illustrative Verdict:
 
 ```text
-No concrete findings. Residual verification risk:
-- Rendered Markdown was not previewed in this illustrative path.
+PASS
 ```
 
 ## Completion Report Shape

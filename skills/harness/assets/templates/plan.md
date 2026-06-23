@@ -5,101 +5,65 @@
 - Harness run id:
 - Artifact id:
 - Phase: Plan
-- Artifact status: draft / accepted / revised / completed / blocked_degraded
+- Artifact status: draft / accepted / revised / completed / blocked / degraded
 - Created at:
 - Updated at:
 - Source request:
-- Task classification: Tiny / Small / Non-trivial
 - Related artifacts:
-
-## Goal
-
-- Requested outcome:
 
 ## Task Classification
 
-- Classification:
-- Rationale:
-- Required gates:
-
-## Orchestration
-
+- Classification: Tiny / Small / Non-trivial
+- Required workflow: lightweight Tiny / full loop
 - Required subagents:
-- Planned subagents:
-- Role/domain assignment:
-- Authorization status: policy preauthorization / explicit approval required / blocked
-- Blocked_degraded roles:
-- Handoff artifacts:
-- Intended/actual reasoning effort:
-- Fallback decision:
 
-## Requirements
+## Risk Level
 
-- User-visible requirements:
-- Functional requirements:
-- Non-functional requirements:
-- Non-goals:
+- Risk: Low / Medium / High
+- Risk drivers:
 
-## Current State
+## Reasoning for classification
 
-- Inspected files/modules/docs:
-- Existing behavior:
-- Local project rules:
+- Why this classification applies:
+- Why lower classification does not apply:
+- Scope or risk triggers:
 
-## Constraints
+## In Scope
 
-- Scope limits:
-- Safety or policy constraints:
-- Compatibility constraints:
-- Approval gates:
-
-## Risks
-
-- Implementation risks:
-- Verification risks:
-- Orchestration risks:
-- Rollback or recovery concerns:
-
-## Acceptance Criteria
-
-### Required Behavior
-
-- [ ]
-
-### Required Non-behavior
-
-- [ ]
-
-### Required Evidence
-
-- [ ]
-
-## Plan Acceptance
-
-- Acceptance source:
-- Approval prompt: `Proceed with this Plan? [y/N]`
-- Approval semantics: only lowercase `y` approves execution of the accepted Plan; ambiguous natural language means no decision and requires asking again for explicit `y` or `n`; non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default and does not trigger implementation, revision, or replanning unless the user explicitly asks to revise/replan; `[y/N]` means No is the default.
-- User response: y / n / non-y / pending
-- Approval or revision request:
-- Revised Plan count:
-- Additional project approval required:
-
-## Test / Verification Strategy
-
-- Test-first approach: failing test / explicit verification scenario / not applicable with reason
-- Targeted checks:
-- Blocked or unsafe checks:
-
-## Implementation Plan
-
-1.
-2.
-3.
+-
 
 ## Out of Scope
 
 -
 
-## Escalation Triggers
+## Files / Areas to Inspect
 
 -
+
+## Proposed Change Plan
+
+1.
+2.
+3.
+
+## Verification Plan
+
+- Targeted checks:
+- Evidence required:
+- Blocked or unsafe checks:
+- Verification exception needed? Yes/No:
+
+## Risks / Assumptions
+
+- Risks:
+- Assumptions:
+- Escalation triggers:
+
+## Approval Gate
+
+- Approval prompt: `Proceed with this Plan? [y/N]`
+- Approval semantics: only lowercase `y` approves execution of the accepted Plan; ambiguous natural language means no decision and requires asking again for explicit `y` or `n`; non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default and does not trigger implementation, revision, or replanning unless the user explicitly asks to revise/replan; `[y/N]` means No is the default.
+- User response: y / n / non-y / pending
+- Approval result: approved / not_approved / blocked / pending
+- Revised Plan count:
+- Additional approval required:

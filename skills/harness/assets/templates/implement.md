@@ -1,11 +1,11 @@
-# Implement
+# Implementation Summary
 
 ## Artifact Metadata
 
 - Harness run id:
 - Artifact id:
 - Phase: Implement / Repair Implement
-- Artifact status: draft / accepted / revised / completed / blocked_degraded
+- Artifact status: draft / accepted / revised / completed / blocked / degraded
 - Created at:
 - Updated at:
 - Source request:
@@ -15,49 +15,40 @@
 ## Accepted Plan Reference
 
 - Plan source:
-- Task classification:
-- Acceptance criteria:
+- Repair Plan source, if applicable:
 - Acceptance source:
-
-## Implementer Assignment
-
-- Implementer subagent identity:
-- Domain:
+- Implementer identity/domain:
 - Allowed files/areas:
-- Write boundary:
-- Blocked_degraded status:
 - Intended/actual reasoning effort:
-- Fallback decision:
 
-## TDD / Verification Setup
+## Changed Files
 
-- Failing tests created first:
-- Explicit verification scenarios defined first:
-- Test-first setup blockers:
+-
 
-## Implementation Summary
+## Summary of Changes
 
 1.
 2.
 3.
 
-## Files Changed
+## Scope Compliance
 
--
+- Stayed inside accepted Plan? Yes/No:
+- Stayed inside write boundary? Yes/No:
+- Out-of-scope items avoided:
+- Scope expansion approvals required or used:
 
-## Implementer Verification
+## Verification Performed
 
 - Commands/checks run:
 - Results:
-- Blocked checks and reasons:
-
-## Orchestrator Integration
-
-- Accepted implementer output:
-- Integration changes by orchestrator:
-- Conflicts:
-- Deviations requiring Review attention:
+- Evidence:
+- Blocked or skipped checks and reasons:
 
 ## Deviations from Plan
+
+-
+
+## Blockers / Residual Risks
 
 -

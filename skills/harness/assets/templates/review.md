@@ -1,115 +1,65 @@
-# Review
+# Clean-context Review
 
 ## Artifact Metadata
 
 - Harness run id:
 - Artifact id:
 - Phase: Review
-- Artifact status: draft / accepted / revised / completed / blocked_degraded
+- Artifact status: draft / accepted / revised / completed / blocked / degraded
 - Created at:
 - Updated at:
 - Source request:
 - Task classification: Tiny / Small / Non-trivial
 - Related artifacts:
 
-## Review Status
+## Inputs Reviewed
 
-- Status: clean_context_review_completed / review_not_required_tiny_only / review_blocked_degraded
-- Guard: Small/Non-trivial can only use `clean_context_review_completed` or `review_blocked_degraded`.
-- Review required? Yes/No:
-- Review entered? Yes/No:
-- Review trigger: Tiny risk / Small required gate / Non-trivial required gate / project rule / user instruction
-
-## Review Authorization
-
-- Authorization model: policy preauthorization / explicit approval required
-- Authorization result: preauthorized / granted / denied / blocked
-- Approved scope:
-- Non-goals:
-
-## Reviewer Subagent
-
-- Reviewer subagent used? Yes/No:
 - Reviewer subagent identity:
 - Clean-context? Yes/No:
 - Read-only? Yes/No:
 - Intended/actual reasoning effort:
-- Fallback decision:
+- Accepted Plan source:
+- Implementation Summary source:
+- Relevant project rules:
 
-## Review Result
+## Accepted Plan
 
-Choose exactly one.
+- Classification:
+- Risk level:
+- In-scope items:
+- Out-of-scope items:
+- Acceptance or verification expectations:
 
-### A. Completed Review
+## Diff / Changed Files
 
-Use only when Status is `clean_context_review_completed`.
+- Changed files reviewed:
+- Diff source or summary:
+- Undocumented scope expansion found? Yes/No:
 
-- Reviewer subagent identity:
-- Clean-context: Yes/No
-- Read-only: Yes/No
+## Verification Evidence
 
-#### Review Matrix
+- Evidence reviewed:
+- Missing or weak evidence:
+- Blocked checks:
 
-Use columns exactly as shown. Verdict values are only `pass`, `fail`, `unknown`, or `not_applicable`. `unknown` is not a pass and must be treated as residual risk. Do not leave any cells blank; use `not_applicable` where applicable.
+## Findings Table
 
-| Criterion | Verdict | Evidence | Residual Risk |
+Use columns exactly as shown. If there are no findings, include one row with `not_applicable` in every cell.
+
+| Severity | Finding | Evidence | Required Action |
 | --- | --- | --- | --- |
-| Scope compliance | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
-| Acceptance criteria satisfaction | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
-| Test coverage / verification fidelity | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
-| Security / secret handling | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
-| Data / DB risk | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
-| Bypass surface | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
-| API or contract drift | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
-| Maintainability / normalization consistency | pass / fail / unknown / not_applicable | evidence | residual risk or not_applicable |
+| Critical / High / Medium / Low / Note / not_applicable | Finding or not_applicable | Evidence or not_applicable | Required action or not_applicable |
 
-#### Blocking Findings
+## Verdict
 
-Findings that must be fixed before completion. If none, write `not_applicable`.
-
-#### Finding N
-
-- Severity:
-- Evidence:
-- Why it matters:
-- Suggested action:
-- Must fix now?:
-
-#### Non-blocking Findings
-
-Findings that may be deferred, with rationale. If none, write `not_applicable`.
-
-#### Finding N
-
-- Severity:
-- Evidence:
-- Why it matters:
-- Suggested action:
-- Must fix now?:
-
-If there are no concrete findings in either findings section, write exactly:
-
-```text
-No concrete findings. Residual verification risk:
-- ...
-```
-
-### B. Blocked / Degraded Review
-
-Use only when Status is `review_blocked_degraded`.
-
-- Fallback condition: subagent tooling unavailable / user denied authorization / authorization cannot be requested / project or security rules prohibit delegation
-- Reason clean-context reviewer subagent review was not completed:
-- Authorization result or blocker:
-- Evidence inspected:
-- Criteria applied:
-- Risk observations:
-- Required statement: `Review blocked/degraded; no clean-context reviewer findings are available.`
-- Degraded independence statement:
-
-## Orchestrator Decision
-
-- Accepted findings:
-- Rejected findings with rationale:
-- Deferred follow-ups:
+- Verdict: PASS / PASS_WITH_NOTES / REPAIR_REQUIRED / BLOCKED
+- Rationale:
 - Repair Plan required? Yes/No:
+- Residual risks:
+
+## Reviewer Rules Confirmation
+
+- Did not modify files: Yes/No
+- Did not rely on implementer intent: Yes/No
+- Compared diff against accepted Plan: Yes/No
+- Flagged undocumented scope expansion: Yes/No

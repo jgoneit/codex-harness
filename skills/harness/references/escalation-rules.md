@@ -14,7 +14,7 @@ Stop and escalate when:
 
 ## Escalation Output
 
-Briefly record what failed, evidence inspected, why continuing is unsafe, needed user/project decision or external state change, completed gates, and `blocked_degraded` gates.
+Briefly record what failed, evidence inspected, why continuing is unsafe, needed user/project decision or external state change, completed gates, and blocked or degraded gates.
 
 ## Resume Rule
 

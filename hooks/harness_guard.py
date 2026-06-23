@@ -14,7 +14,6 @@ from typing import Any, Callable
 
 PLAN_PROMPT = "Proceed with this Plan? [y/N]"
 REPAIR_PROMPT = "Proceed with this Repair Plan? [y/N]"
-NO_FINDING_STATEMENT = "No concrete findings. Residual verification risk:"
 REVIEW_STATUSES = (
     "clean_context_review_completed",
     "review_not_required_tiny_only",
@@ -22,34 +21,61 @@ REVIEW_STATUSES = (
 )
 
 COMPLETION_SECTIONS = (
-    "Gate Summary",
-    "Orchestration Summary",
-    "Implemented Changes",
-    "Verification Performed",
+    "Status",
     "Review Status",
-    "Unresolved Risks",
-    "Follow-ups",
+    "Repair Plan Required",
+    "Changed Files",
+    "Verification",
+    "Review Result",
+    "Approval Ledger",
+    "Residual Risks",
+    "Follow-up",
 )
 
 PLANNER_SECTIONS = (
     "Task Classification",
-    "Acceptance Criteria",
-    "Verification",
-    "Implementation Plan",
+    "Risk Level",
+    "Reasoning for classification",
+    "In Scope",
+    "Out of Scope",
+    "Files / Areas to Inspect",
+    "Proposed Change Plan",
+    "Verification Plan",
+    "Risks / Assumptions",
+    "Approval Gate",
 )
 
 IMPLEMENTER_SECTIONS = (
-    "Files Changed",
-    "Verification",
-    "Deviations",
+    "Accepted Plan Reference",
+    "Changed Files",
+    "Summary of Changes",
+    "Scope Compliance",
+    "Verification Performed",
+    "Deviations from Plan",
+    "Blockers / Residual Risks",
+)
+
+REVIEWER_SECTIONS = (
+    "Inputs Reviewed",
+    "Accepted Plan",
+    "Diff / Changed Files",
+    "Verification Evidence",
+    "Findings Table",
+    "Verdict",
 )
 
 REVIEWER_FINDING_FIELDS = (
-    "Severity:",
-    "Evidence:",
-    "Why it matters:",
-    "Suggested action:",
-    "Must fix now?:",
+    "Severity",
+    "Finding",
+    "Evidence",
+    "Required Action",
+)
+
+REVIEWER_VERDICTS = (
+    "PASS",
+    "PASS_WITH_NOTES",
+    "REPAIR_REQUIRED",
+    "BLOCKED",
 )
 
 SHELL_TOOL_NAMES = {"bash", "shell", "terminal", "exec", "command"}
@@ -398,20 +424,29 @@ def missing_terms(message: str, terms: tuple[str, ...]) -> list[str]:
     return [term for term in terms if term not in message]
 
 
+def has_markdown_heading(message: str, heading: str) -> bool:
+    return re.search(rf"^#+\s+{re.escape(heading)}\s*$", message, re.MULTILINE) is not None
+
+
 def is_completion_report(message: str) -> bool:
-    return "# Completion Report" in message or (
-        "Gate Summary" in message
-        and "Orchestration Summary" in message
-        and "Implemented Changes" in message
+    return has_markdown_heading(message, "Completion Report") or (
+        "Review Status" in message
+        and "Repair Plan Required" in message
+        and "Approval Ledger" in message
     )
 
 
 def is_repair_plan_artifact(message: str) -> bool:
+    if is_completion_report(message):
+        return False
     return (
-        "# Repair Plan" in message
-        or "## Repair Approval" in message
+        has_markdown_heading(message, "Repair Plan")
+        or "## Repair Approval Gate" in message
         or REPAIR_PROMPT in message
-        or all(term in message for term in ("Fix Now", "Expected Changes", "Repair Approval"))
+        or all(
+            term in message
+            for term in ("Review Findings Addressed", "Repair Scope", "Repair Approval Gate")
+        )
     )
 
 
@@ -421,11 +456,11 @@ def is_plan_artifact(message: str) -> bool:
     if is_repair_plan_artifact(message):
         return False
     return (
-        "# Plan" in message
-        or "## Plan Acceptance" in message
+        has_markdown_heading(message, "Plan")
+        or "## Approval Gate" in message
         or all(
             term in message
-            for term in ("Task Classification", "Acceptance Criteria", "Implementation Plan")
+            for term in ("Task Classification", "Proposed Change Plan", "Approval Gate")
         )
     )
 
@@ -508,14 +543,18 @@ def handle_subagent_stop(data: dict[str, Any]) -> None:
         if missing:
             block("Harness implementer output is missing required sections: " + ", ".join(missing))
     elif role == "reviewer":
-        if NO_FINDING_STATEMENT in message:
+        missing = missing_terms(message, REVIEWER_SECTIONS)
+        if missing:
+            block("Harness reviewer output is missing required sections: " + ", ".join(missing))
             return
         missing = missing_terms(message, REVIEWER_FINDING_FIELDS)
         if missing:
+            block("Harness reviewer Findings Table is missing required columns: " + ", ".join(missing))
+            return
+        if not any(verdict in message for verdict in REVIEWER_VERDICTS):
             block(
-                "Harness reviewer output must include the no-finding statement or finding fields. "
-                "Missing: "
-                + ", ".join(missing)
+                "Harness reviewer output is missing a canonical verdict value: "
+                + ", ".join(REVIEWER_VERDICTS)
             )
 
 
