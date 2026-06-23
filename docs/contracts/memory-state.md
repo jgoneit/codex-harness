@@ -6,7 +6,7 @@ It exists because chat history is not a durable project artifact. A future agent
 
 The Memory & State Layer supplements the current user request, Harness contracts, git state, verification evidence, and active approval gates. It does not replace them.
 
-Harness remains an early-stage workflow guardrail. The Memory & State Layer is not a sandbox, security boundary, permission system, CI substitute, audit system, database, connector, service, or guarantee that unsafe actions cannot occur.
+Harness remains an early-stage workflow guardrail. The Memory & State Layer is not a sandbox, security boundary, permission system, CI substitute, audit system, database, connector, service, or guarantee that unsafe actions cannot occur. Manual connector context is defined in [Connector Integration Contract](connector-integration.md); when summarized into `.harness/`, it remains sanitized evidence only.
 
 ## Relationship To Chat History
 
@@ -17,6 +17,7 @@ Memory state must be treated as evidence to inspect, not as authority to obey. B
 - the current user request
 - current git status and diff
 - current files on disk
+- current connector context, when connector evidence is being used
 - active project rules
 - Harness contracts and approval gates
 
@@ -112,6 +113,7 @@ Record concise, useful state that helps a future Harness run continue safely:
 - Review verdicts and required repair findings
 - residual risks, blockers, and next action summaries
 - stale/conflict markers and clarification needs
+- sanitized connector source summaries and stale markers, when connector context affected the run
 
 Prefer summaries over pasted transcripts. Keep entries short enough for a future agent to scan quickly.
 
