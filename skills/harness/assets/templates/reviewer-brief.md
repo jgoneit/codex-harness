@@ -70,3 +70,17 @@ The Findings Table must use columns exactly:
 Verdict values are only `PASS`, `PASS_WITH_NOTES`, `REPAIR_REQUIRED`, or `BLOCKED`.
 
 Use `PASS` only when there is no required action and no material residual risk. Use `PASS_WITH_NOTES` when there is no required repair but notes or residual risk remain. Use `REPAIR_REQUIRED` when at least one finding requires repair before completion. Use `BLOCKED` when required evidence, tooling, policy, or scope clarity is missing.
+
+Append this `SubagentStop Summary` after the Review artifact:
+
+- Role:
+- Task / Phase:
+- Inputs Received:
+- Actions Completed:
+- Files Inspected:
+- Files Changed:
+- Verification Performed:
+- Evidence Produced:
+- Blockers:
+- Residual Risks:
+- Required Next Action:

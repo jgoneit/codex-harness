@@ -4,7 +4,7 @@ Harness is an early-stage workflow guardrail for Codex runs that need deliberate
 
 Harness is not a sandbox, security boundary, permission system, CI substitute, human review substitute, or guarantee that unsafe actions cannot occur. Repository permissions, least-privilege access, project policy, automated tests, code review, and human judgment remain required.
 
-This contract is authoritative for Harness workflow artifacts and phase gates.
+This contract is authoritative for Harness workflow artifacts and phase gates. The canonical sub-agent handoff rules, including bounded briefs, `SubagentStop Summary` requirements, and role-collapse behavior, are defined in [Sub-agent Handoff Contract](subagent-handoff.md).
 
 ## Why The Workflow Exists
 
@@ -133,7 +133,7 @@ Verdict values:
 
 The reviewer must be clean-context and read-only. The reviewer must not modify files, must not rely on implementer intent, must compare the diff against the accepted Plan, must flag undocumented scope expansion, and must identify missing or weak verification evidence.
 
-If a clean-context reviewer cannot be used when Review is required, Review is degraded, not completed.
+If a clean-context reviewer cannot be used when Review is required, Review is degraded, not completed. Main-agent inspection can inform residual risk reporting, but it cannot be labeled Clean-context Review.
 
 ### Repair Plan
 

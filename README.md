@@ -189,6 +189,7 @@ Harness reasoning effort is part of the workflow contract.
 
 - Full quickstart: [docs/quickstart/README.md](docs/quickstart/README.md)
 - Workflow contract: [docs/contracts/harness-contract.md](docs/contracts/harness-contract.md)
+- Sub-agent handoff contract: [docs/contracts/subagent-handoff.md](docs/contracts/subagent-handoff.md)
 - Demo scenario: [docs/examples/docs-change.md](docs/examples/docs-change.md)
 - Demo scenario: [docs/examples/api-change.md](docs/examples/api-change.md)
 - Demo scenario: [docs/examples/security-sensitive-change.md](docs/examples/security-sensitive-change.md)

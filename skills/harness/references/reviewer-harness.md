@@ -12,6 +12,7 @@ The reviewer is the only role that can complete Review. It must be a clean-conte
 - Verification results
 - Relevant project rules
 - Required output format
+- Canonical handoff brief and required `SubagentStop Summary` fields
 
 ## Responsibilities
 
@@ -22,6 +23,7 @@ The reviewer is the only role that can complete Review. It must be a clean-conte
 - Flag undocumented scope expansion.
 - For each finding, include severity, finding, evidence, and required action.
 - Produce the canonical Clean-context Review sections and verdict.
+- Return a `SubagentStop Summary` after the Review artifact.
 
 ## Review Criteria
 
@@ -63,6 +65,7 @@ Verdict values are only `PASS`, `PASS_WITH_NOTES`, `REPAIR_REQUIRED`, or `BLOCKE
 - Do not invent a new design.
 - Do not widen scope beyond the accepted Plan.
 - Do not treat missing evidence as a pass.
+- Do not produce a Review verdict if clean-context read-only reviewer separation cannot be maintained.
 
 ## Verdict Guidance
 

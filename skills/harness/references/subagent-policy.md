@@ -2,6 +2,7 @@
 
 ## Principles
 
+- The authoritative handoff contract is `../../../docs/contracts/subagent-handoff.md`.
 - `Tiny` may be handled by the main agent.
 - `Small` and larger tasks require planner, implementer, and reviewer subagents.
 - Explicit `$harness` invocation is policy preauthorization for creating planner, implementer, and reviewer subagents only.
@@ -34,11 +35,31 @@ Use `policy preauthorization` for required Harness subagents unless environment,
 
 Each brief must include objective, classification, role/domain, scope, files/areas, non-goals, constraints, allowed tools or prohibited actions, code modification permission, required output format, evidence requirements, and stop conditions.
 
-Default permission is read-only. Only implementer subagents may receive write permission, and only inside specified files/areas.
+Default permission is read-only. Only implementer and repair implementer subagents may receive write permission. Implementer write permission is limited to the accepted Plan and specified files/areas; repair implementer write permission is limited to the accepted Repair Plan, approved findings, and specified write boundary.
+
+Briefs must identify whether the handoff is planner, implementer, reviewer, or repair implementer. Repair implementer briefs are narrowed to the accepted Repair Plan and approved findings only.
+
+## SubagentStop Summary
+
+Every planner, implementer, reviewer, and repair implementer subagent must end with the canonical `SubagentStop Summary` fields from `../../../docs/contracts/subagent-handoff.md`:
+
+- Role
+- Task / Phase
+- Inputs Received
+- Actions Completed
+- Files Inspected
+- Files Changed
+- Verification Performed
+- Evidence Produced
+- Blockers
+- Residual Risks
+- Required Next Action
 
 ## Reviewer Rule
 
 Review is completed only by a clean-context read-only reviewer subagent. Main-agent risk inspection is not Review.
+
+If reviewer role separation collapses, record `review_blocked_degraded` and the required no-review statement instead of producing a Review verdict from main-agent inspection.
 
 ## Blocked / Degraded Handling
 
