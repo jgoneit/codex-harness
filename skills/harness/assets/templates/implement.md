@@ -52,3 +52,17 @@
 ## Blockers / Residual Risks
 
 -
+
+## SubagentStop Summary
+
+- Role:
+- Task / Phase:
+- Inputs Received:
+- Actions Completed:
+- Files Inspected:
+- Files Changed:
+- Verification Performed:
+- Evidence Produced:
+- Blockers:
+- Residual Risks:
+- Required Next Action:

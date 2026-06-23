@@ -4,7 +4,7 @@ This quickstart shows how to use Harness once the plugin is available in Codex.
 
 First-time users should package, install, and load the plugin for their Codex CLI environment before following this guide. See the top-level [README](../../README.md) for the supported packaging prerequisites, `make package`, and the `dist/harness.zip` artifact.
 
-For the full workflow contract, including canonical artifact sections, approval gates, blocked/degraded behavior, and status values, see [docs/contracts/harness-contract.md](../contracts/harness-contract.md).
+For the full workflow contract, including canonical artifact sections, approval gates, blocked/degraded behavior, and status values, see [docs/contracts/harness-contract.md](../contracts/harness-contract.md). For canonical sub-agent briefs and `SubagentStop` summaries, see [docs/contracts/subagent-handoff.md](../contracts/subagent-handoff.md).
 
 ## 1. Invoke Harness Explicitly
 

@@ -63,3 +63,17 @@ Use columns exactly as shown. If there are no findings, include one row with `no
 - Did not rely on implementer intent: Yes/No
 - Compared diff against accepted Plan: Yes/No
 - Flagged undocumented scope expansion: Yes/No
+
+## SubagentStop Summary
+
+- Role:
+- Task / Phase:
+- Inputs Received:
+- Actions Completed:
+- Files Inspected:
+- Files Changed:
+- Verification Performed:
+- Evidence Produced:
+- Blockers:
+- Residual Risks:
+- Required Next Action:

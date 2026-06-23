@@ -4,7 +4,7 @@ Harness workflow loop roles are separated. For `Small` and larger tasks, separat
 
 ## Orchestrator
 
-The main agent classifies the task, inspects project rules, defines topology, writes bounded briefs, integrates outputs, resolves conflicts, controls scope, performs final verification, and owns Completion.
+The main agent classifies the task, inspects project rules, defines topology, writes bounded briefs, integrates outputs, validates `SubagentStop Summary` evidence, resolves conflicts, controls scope, performs final verification, and owns Completion.
 
 ## Planner
 
@@ -13,6 +13,10 @@ The planner analyzes requirements and current state, defines constraints, risks,
 ## Implementer
 
 The implementer changes only the assigned domain and allowed files/areas under an accepted Plan or Repair Plan. It runs targeted verification and stops on scope drift.
+
+## Repair Implementer
+
+The repair implementer is an implementer constrained to the accepted Repair Plan and approved Review findings. It does not fix unapproved findings or broaden scope.
 
 ## Reviewer
 
@@ -28,4 +32,4 @@ The improvement artifact is conditional. It records process, template, hook, or 
 
 ## Separation Rule
 
-Plan is not Review, Review is not fix, and Completion is not implementation. If required roles collapse into the main agent for `Small` or larger tasks, record the affected role or gate as blocked or degraded.
+Plan is not Review, Review is not fix, and Completion is not implementation. If required roles collapse into the main agent for `Small` or larger tasks, record the affected role or gate as blocked or degraded. A collapsed reviewer cannot complete Clean-context Review.
