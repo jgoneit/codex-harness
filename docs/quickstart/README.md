@@ -53,6 +53,10 @@ After exact Plan approval, Harness gives the implementer only the accepted scope
 
 If the work needs new files, broader scope, destructive commands, secret access, deployment, or production-impact operations outside the accepted Plan, Harness stops for a new gate instead of silently expanding scope.
 
+### Optional: Use Worktree Isolation
+
+For `Non-trivial`, risky, multi-file, or clean-review-boundary work, create or select a Git worktree after Plan approval and run Harness from that worktree. Worktree Isolation keeps rollback and review hygiene cleaner, but it is not a sandbox or security boundary and does not approve implementation, repair, destructive commands, secret/config access, deployment, verification exceptions, or scope expansion. See [docs/contracts/worktree-isolation.md](../contracts/worktree-isolation.md).
+
 ## 4. Wait for Review
 
 For `Small` and `Non-trivial` work, Review must be performed by a clean-context read-only reviewer. The reviewer compares the diff against the accepted Plan, does not rely on implementer intent, must not modify files, flags undocumented scope expansion, and returns a Findings Table with this shape:

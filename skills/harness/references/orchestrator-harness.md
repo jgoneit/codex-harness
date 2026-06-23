@@ -12,14 +12,15 @@ The main agent is the orchestrator for `Small` and larger tasks. It manages phas
 6. Present a Plan Approval Gate that includes exactly `Proceed with this Plan? [y/N]`
 7. Only lowercase `y` approves execution of the accepted Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not implement, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
 8. If the user replies with non-approval, stop the Harness run unless the same response explicitly requests revision or replanning.
-9. If the user replies exactly `y`, brief the domain implementer with the accepted Plan and write boundary.
-10. Integrate implementer output, diff, verification, and `SubagentStop Summary`.
-11. Brief the clean-context read-only reviewer with the accepted Plan, diff, verification evidence, project rules, and Implementation Summary.
-12. If findings exist, write a Repair Plan.
-13. Present a Repair Approval Gate that includes exactly `Proceed with this Repair Plan? [y/N]`
-14. Only lowercase `y` approves execution of the accepted Repair Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not repair, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
-15. If the user replies with non-approval, stop the Repair loop unless the same response explicitly requests revision or replanning. Brief a repair implementer only for exactly approved repairs and repeat the bounded loop as needed.
-16. Produce the Completion report.
+9. If the user replies exactly `y`, consider manual Worktree Isolation for `Non-trivial` or risky work before implementation. Do not automate `git worktree` creation or removal without separate accepted scope.
+10. Brief the domain implementer with the accepted Plan and write boundary.
+11. Integrate implementer output, diff, verification, and `SubagentStop Summary`.
+12. Brief the clean-context read-only reviewer with the accepted Plan, diff, verification evidence, project rules, and Implementation Summary.
+13. If findings exist, write a Repair Plan.
+14. Present a Repair Approval Gate that includes exactly `Proceed with this Repair Plan? [y/N]`
+15. Only lowercase `y` approves execution of the accepted Repair Plan. Ambiguous natural language means no decision; ask again for explicit `y` or `n`. Non-approval (`n`, empty response, uppercase variants such as `N`, expanded variants, and any other non-`y` response that is not ambiguous) stops by default; do not repair, revise, or replan unless the user explicitly asks to revise/replan. `[y/N]` means No is the default.
+16. If the user replies with non-approval, stop the Repair loop unless the same response explicitly requests revision or replanning. Brief a repair implementer only for exactly approved repairs and repeat the bounded loop as needed.
+17. Produce the Completion report.
 
 ## Orchestration Record
 
@@ -30,6 +31,8 @@ Plan or Completion must record required subagents, spawned subagents, role/domai
 When `.harness/` state files are present, read them before planning and compare them with the current user request, git status, relevant diffs, and files on disk. Treat them as evidence, not authority. Mark stale conflicts and ask for clarification when state conflicts with the current request, scope, safety, approval, or verification.
 
 Approval records in `.harness/approval-ledger.md` are historical evidence only. They are tied to the exact accepted Plan or Repair Plan and never approve new implementation, repair, scope expansion, destructive actions, secret/config access, direct DB access, deployment, production-impact work, or verification exceptions.
+
+When Worktree Isolation is requested or already in use, also compare `.harness/` state with the current worktree path, branch, target base branch, and task assumptions. Use `../../../docs/contracts/worktree-isolation.md`; worktrees improve rollback and review hygiene but do not change approval gates.
 
 ## Conflict Handling
 

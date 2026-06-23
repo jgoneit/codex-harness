@@ -127,6 +127,14 @@ Memory state summarizes Harness artifacts; it does not rename, replace, or compl
 
 The canonical Plan, Implementation Summary, Clean-context Review, Repair Plan, Completion report, and `SubagentStop Summary` requirements remain defined by the Harness workflow and sub-agent handoff contracts.
 
+## Worktree State
+
+When a Harness run uses Git Worktree Isolation, read available `.harness/` state files inside the active worktree and compare them with the current branch, worktree path, target base branch, task request, git status, relevant diffs, and files on disk.
+
+Treat branch, path, base-branch, task, and approval assumptions as stale when they refer to an old worktree, old branch, different task, superseded base, merged or abandoned branch, missing file, or outdated Plan. Stale worktree state is evidence only and never authorizes implementation, repair, scope expansion, destructive commands, secret/config access, direct DB access, deployment, or verification exceptions.
+
+If using task-local Memory & State files in a worktree, keep them under that worktree's `.harness/` directory, use concise sanitized summaries, and avoid secrets or sensitive data.
+
 ## What Not To Record
 
 Never record:

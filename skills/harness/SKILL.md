@@ -43,6 +43,7 @@ Read the relevant references before acting:
 - Always follow `../../docs/contracts/harness-contract.md` for canonical artifact sections, approval gates, Review rules, and Completion statuses.
 - Always follow `../../docs/contracts/subagent-handoff.md` for bounded sub-agent briefs, role handoffs, `SubagentStop Summary` fields, and role-collapse behavior.
 - Follow `../../docs/contracts/memory-state.md` when `.harness/` state files are present or project-local memory is requested; use `assets/templates/state.md`, `assets/templates/approval-ledger.md`, `assets/templates/decisions.md`, `assets/templates/last-run.md`, and `assets/templates/handoff.md` when initializing or updating those files.
+- Follow `../../docs/contracts/worktree-isolation.md` when the user or project requests Worktree Isolation, or when an active worktree session record is present; use `assets/templates/worktree-session.md` for a minimal task-local worktree record when needed.
 - Always read `references/classification-policy.md`, `references/phase-contracts.md`, `references/orchestrator-harness.md`, `references/subagent-policy.md`, `references/model-policy.md`, and `references/completion-policy.md`.
 - For planning, read `references/planner-harness.md` and use `assets/templates/plan.md`.
 - For implementation, read `references/implementer-harness.md` and use `assets/templates/implement.md`.

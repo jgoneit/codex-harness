@@ -4,7 +4,7 @@ Harness is an early-stage workflow guardrail for Codex runs that need deliberate
 
 Harness is not a sandbox, security boundary, permission system, CI substitute, human review substitute, or guarantee that unsafe actions cannot occur. Repository permissions, least-privilege access, project policy, automated tests, code review, and human judgment remain required.
 
-This contract is authoritative for Harness workflow artifacts and phase gates. The canonical sub-agent handoff rules, including bounded briefs, `SubagentStop Summary` requirements, and role-collapse behavior, are defined in [Sub-agent Handoff Contract](subagent-handoff.md). Optional project-local continuity state is defined in [Memory & State Layer Contract](memory-state.md).
+This contract is authoritative for Harness workflow artifacts and phase gates. The canonical sub-agent handoff rules, including bounded briefs, `SubagentStop Summary` requirements, and role-collapse behavior, are defined in [Sub-agent Handoff Contract](subagent-handoff.md). Optional project-local continuity state is defined in [Memory & State Layer Contract](memory-state.md). Optional Git worktree hygiene for rollback and reviewability is defined in [Worktree Isolation Contract](worktree-isolation.md); it is not a sandbox, security boundary, permission system, or substitute for human review.
 
 ## Why The Workflow Exists
 
