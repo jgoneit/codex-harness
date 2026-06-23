@@ -3,21 +3,22 @@
   "version": "0.1.0+codex.20260618123412",
   "description": "Harness workflow router for gated Codex Plan, Implement, Review, Repair, and Completion loops.",
   "author": {
-    "name": "Local developer"
+    "name": "Jaegon Seo"
   },
   "keywords": [
+    "codex",
     "harness",
-    "workflow",
-    "review",
-    "subagents",
-    "ralph-loop"
+    "agent-workflow",
+    "approval-gates",
+    "clean-context-review",
+    "guardrails"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Harness",
     "shortDescription": "Gated Plan, Implement, Review workflow",
-    "longDescription": "Harness adds an explicit $harness skill for controlled Ralph Loop execution with classification, approval gates, role-separated subagents, clean-context review, repair planning, and completion reporting.",
-    "developerName": "Local developer",
+    "longDescription": "Harness adds an explicit $harness skill for controlled Codex workflow execution with classification, approval gates, role-separated subagents, clean-context review, repair planning, and completion reporting.",
+    "developerName": "Jaegon Seo",
     "category": "Productivity",
     "capabilities": [
       "Interactive",

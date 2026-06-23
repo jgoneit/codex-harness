@@ -2,6 +2,8 @@
 
 This quickstart shows how to use Harness once the plugin is available in Codex.
 
+First-time users should package, install, and load the plugin for their Codex CLI environment before following this guide. See the top-level [README](../../README.md) for the supported packaging prerequisites, `make package`, and the `dist/harness.zip` artifact.
+
 ## 1. Invoke Harness Explicitly
 
 Start a request with `$harness` or include it clearly in the task:

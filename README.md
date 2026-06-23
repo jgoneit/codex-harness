@@ -2,13 +2,25 @@
 
 **Language:** [한국어](README.ko.md) | English
 
-Codex Harness is a gated workflow plugin for Codex. It is for work where you want a deliberate **Plan -> Implement -> Review -> Repair -> Completion** loop instead of immediate execution.
+Codex Harness is an early-stage gated workflow plugin for Codex CLI. It helps keep higher-risk agent work deliberate by separating planning, approval, scoped implementation, clean-context review, repair, and completion reporting instead of jumping straight into edits.
 
 ```text
 Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion
 ```
 
 Use it when a request is risky enough that planning, scoped implementation, and clean-context review should be separated: multi-file edits, workflow or policy updates, behavior changes, security-sensitive work, API or contract changes, and anything that benefits from explicit approval gates.
+
+Harness is not a sandbox, security boundary, or replacement for least-privilege permissions, code review, tests, or human judgment. This project is being shared early so people can experiment with the workflow and provide feedback.
+
+## 👥 Who Is This For?
+
+Harness is for:
+
+- Developers using Codex on multi-file or higher-risk changes where scope control, explicit approval, and independent review matter more than speed
+- People experimenting with agent workflow patterns such as planning gates, role separation, and clean-context review
+- Teams exploring approval-gated AI coding workflows before deciding whether the pattern fits their process
+
+It is usually not worth using for tiny, low-risk work such as spelling fixes, one-line local cleanups, throwaway experiments, exploratory questions, or tasks where normal Codex execution is already enough.
 
 ## 🧭 At a Glance
 
@@ -20,6 +32,26 @@ Use it when a request is risky enough that planning, scoped implementation, and 
 | 🔎 Review | Main-agent self-review does not count; Review must come from a clean-context read-only reviewer. |
 | 📋 Completion | Final output records the Approval Ledger, verification, Review status, unresolved risks, and follow-ups. |
 | 🧰 Hooks | Minimal validators check Harness artifact shape and block obvious dangerous command patterns. |
+
+## ⚙️ Quickstart / Install From Source
+
+Packaging uses tools already assumed by this repository:
+
+- `make`
+- `sh`
+- `git`
+- `zip`
+- `unzip`
+
+From a local checkout, build the plugin archive with:
+
+```text
+make package
+```
+
+This creates `dist/harness.zip`, which is the package artifact to install locally or attach to a GitHub release.
+
+The exact Codex CLI plugin install/load command can differ by environment and is not confirmed by this repository. Use the plugin install or load mechanism supported by your Codex CLI environment, then invoke Harness with `$harness`.
 
 ## ⚡ 2-Minute Quickstart
 
@@ -55,6 +87,12 @@ Use it when a request is risky enough that planning, scoped implementation, and 
    ```
 
 For the full step-by-step guide, see [docs/quickstart/README.md](docs/quickstart/README.md).
+
+## 📣 Current Status
+
+Harness is an early-stage workflow harness intended for experimentation and feedback. Review it before team or production use, especially the workflow prompts, hook behavior, packaging output, and how it fits your repository rules.
+
+Harness does not replace sandboxing, least-privilege access, normal code review, project-specific security controls, automated verification, or human judgment.
 
 ## ✅ When to Use Harness
 
@@ -128,6 +166,8 @@ make package
 ```
 
 This writes `dist/harness.zip` from Git-tracked and non-ignored files. It verifies the archive does not contain `.git/`, `__MACOSX/`, `__pycache__/`, `*.pyc`, `.DS_Store`, or `dist/` paths; ignored local files are not packaged.
+
+For public releases, attach `dist/harness.zip` as the GitHub release artifact.
 
 ## ⚠️ Current Limitation
 
