@@ -173,6 +173,17 @@ This writes `dist/harness.zip` from Git-tracked and non-ignored files. The archi
 
 For public releases, attach `dist/harness.zip` as the GitHub release artifact. The repository marketplace entry `.agents/plugins/marketplace.json` is planned for a later release and is not present now.
 
+For the first manual `v0.1.0` release:
+
+- Ensure the working tree is clean.
+- Run `make test`.
+- Run `make package`.
+- Verify `dist/harness.zip`.
+- Create the `v0.1.0` tag.
+- Create the GitHub Release.
+- Upload `dist/harness.zip`.
+- Mark the release as pre-release if appropriate.
+
 ## ⚠️ Current Limitation
 
 The Harness guard is a denylist-based advisory heuristic, not a security boundary. It blocks known dangerous patterns that its validators recognize, and unrecognized inputs fail open by design. This means fail-open behavior is a structural limit of the guard, not a bug.

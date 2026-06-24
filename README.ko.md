@@ -159,6 +159,17 @@ make package
 
 public release에서는 `dist/harness.zip`을 GitHub release artifact로 첨부하세요. repository marketplace entry인 `.agents/plugins/marketplace.json`은 이후 release에 추가할 예정이며 현재는 없습니다.
 
+첫 수동 `v0.1.0` release에서는 다음을 수행하세요.
+
+- working tree가 clean인지 확인합니다.
+- `make test`를 실행합니다.
+- `make package`를 실행합니다.
+- `dist/harness.zip`을 검증합니다.
+- `v0.1.0` tag를 만듭니다.
+- GitHub Release를 만듭니다.
+- `dist/harness.zip`을 업로드합니다.
+- 필요하면 pre-release로 표시합니다.
+
 ## ⚠️ 현재 제한
 
 Harness guard는 denylist 기반 보조 휴리스틱이며 security boundary가 아닙니다. validator가 인식하는 알려진 위험 pattern을 차단하고, 인식하지 못한 입력은 설계상 fail-open으로 통과합니다. 따라서 fail-open 동작은 guard의 구조적 한계이지 버그가 아닙니다.
