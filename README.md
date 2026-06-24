@@ -2,6 +2,8 @@
 
 **Language:** [한국어](README.ko.md) | English
 
+![CI](https://github.com/jgoneit/harness/actions/workflows/ci.yml/badge.svg)
+
 Codex Harness is an early-stage gated workflow plugin for Codex CLI. It helps keep higher-risk agent work deliberate by separating planning, approval, scoped implementation, clean-context review, repair, and completion reporting instead of jumping straight into edits.
 
 ```text
@@ -49,16 +51,18 @@ From a local checkout, build the plugin archive with:
 make package
 ```
 
-This creates `dist/harness.zip`, which is the package artifact to install locally or attach to a GitHub release.
+This creates `dist/harness.zip`, a loadable Codex plugin bundle that includes `.codex-plugin/plugin.json` and the Harness plugin files.
 
-The exact Codex CLI plugin install/load command can differ by environment and is not confirmed by this repository. Use the plugin install or load mechanism supported by your Codex CLI environment, then invoke Harness with `$harness`.
+Install or load that bundle through the Codex CLI plugin or marketplace mechanism supported by your environment, then invoke Harness with a command-like `$harness` prompt. This repository does not currently document one confirmed install command.
+
+The repository marketplace entry `.agents/plugins/marketplace.json` is planned for a later release and is not present in this checkout.
 
 ## ⚡ 2-Minute Quickstart
 
-1. Start the request with `$harness` and give a concrete objective.
+1. Start a prompt line with a command-like `$harness` invocation and give a concrete objective. Optional leading whitespace is allowed, and `use $harness` works when `use` is lowercase.
 
    ```text
-   Use $harness for this change.
+   use $harness for this change.
 
    Objective: update the CLI usage docs so they explain dry-run mode and failure exit codes.
 
@@ -107,7 +111,7 @@ Harness does not replace sandboxing, least-privilege access, normal code review,
 - Tiny one-line fixes where normal Codex execution is enough
 - Exploratory questions where no implementation is requested
 - Work where you need fast iteration without approval gates
-- Documentation that merely mentions Harness, unless you actually want the gated workflow
+- Documentation that merely mentions Harness; do not start a prompt line with a command-like `$harness` invocation unless you actually want the gated workflow
 
 ## 🧱 Task Sizes
 
@@ -150,7 +154,7 @@ The canonical bundled hook config is `hooks/hooks.json`; root `hooks.json` is a 
 
 The active validators are intentionally minimal:
 
-- `UserPromptSubmit` adds Harness context when `$harness` appears in the prompt.
+- `UserPromptSubmit` adds Harness context only when a non-quoted, non-code prompt line starts with a command-like `$harness` invocation: optional leading whitespace, optional lowercase `use `, then exact `$harness` followed by whitespace or end of line. It does not activate for prose-middle mentions, inline backtick mentions, fenced code blocks, blockquotes, uppercase variants, or non-exact tokens such as `$harness-extra`.
 - `SubagentStop` checks planner, implementer, and reviewer output shape.
 - `Stop` checks Plan, Repair Plan, and Completion report structure.
 - `PreToolUse` blocks obvious dangerous shell-like commands, including credential reads, environment dumps, recursive secret searches, broad destructive deletes, destructive Git operations, destructive SQL, and production-impact commands.
@@ -165,9 +169,9 @@ Create a release zip with:
 make package
 ```
 
-This writes `dist/harness.zip` from Git-tracked and non-ignored files. It verifies the archive does not contain `.git/`, `__MACOSX/`, `__pycache__/`, `*.pyc`, `.DS_Store`, or `dist/` paths; ignored local files are not packaged.
+This writes `dist/harness.zip` from Git-tracked and non-ignored files. The archive is the loadable Codex plugin bundle and includes `.codex-plugin/plugin.json`. It verifies the archive does not contain `.git/`, `__MACOSX/`, `__pycache__/`, `*.pyc`, `.DS_Store`, or `dist/` paths; ignored local files are not packaged.
 
-For public releases, attach `dist/harness.zip` as the GitHub release artifact.
+For public releases, attach `dist/harness.zip` as the GitHub release artifact. The repository marketplace entry `.agents/plugins/marketplace.json` is planned for a later release and is not present now.
 
 ## ⚠️ Current Limitation
 
@@ -175,7 +179,11 @@ The Harness guard is a denylist-based advisory heuristic, not a security boundar
 
 The test suite's [`KNOWN_FALSE_NEGATIVE_GAPS`](tests/test_harness_guard_pre_tool_use.py#L160) cases intentionally document examples of this limit. They cover patterns that policy should treat as unsafe but a denylist can miss because they require runtime decoding, variable resolution, embedded interpreter analysis, or coverage of an unbounded set of command forms.
 
-Harness still does not replace sandboxing, least-privilege permissions, project-specific security controls, automated verification, code review, or human judgment. Separately, the prompt hook currently checks for the `$harness` token or substring anywhere in the submitted prompt, so documentation work that includes the literal token can also receive active Harness context.
+Harness still does not replace sandboxing, least-privilege permissions, project-specific security controls, automated verification, code review, or human judgment.
+
+Prompt activation is narrower than ordinary mentions: Harness context is added only for command-like `$harness` invocations at the start of a non-code, non-quoted prompt line, with optional leading whitespace and optional lowercase `use `; prose-middle mentions, inline code, fenced code blocks, blockquotes, uppercase variants, and non-exact tokens do not activate it.
+
+The planned transition beyond this advisory denylist model is documented in [ADR 0001: P3 Enforcement Model](docs/adr/0001-p3-enforcement-model.md).
 
 ## 🧠 Reasoning Effort
 
@@ -193,6 +201,7 @@ Harness reasoning effort is part of the workflow contract.
 
 - Full quickstart: [docs/quickstart/README.md](docs/quickstart/README.md)
 - Workflow contract: [docs/contracts/harness-contract.md](docs/contracts/harness-contract.md)
+- P3 enforcement model ADR: [docs/adr/0001-p3-enforcement-model.md](docs/adr/0001-p3-enforcement-model.md)
 - Connector integration contract: [docs/contracts/connector-integration.md](docs/contracts/connector-integration.md)
 - Worktree Isolation contract: [docs/contracts/worktree-isolation.md](docs/contracts/worktree-isolation.md)
 - Sub-agent handoff contract: [docs/contracts/subagent-handoff.md](docs/contracts/subagent-handoff.md)

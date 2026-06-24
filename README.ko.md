@@ -2,6 +2,8 @@
 
 **언어:** 한국어 | [English](README.md)
 
+![CI](https://github.com/jgoneit/harness/actions/workflows/ci.yml/badge.svg)
+
 Codex Harness는 Codex에서 사용하는 gated workflow plugin입니다. 바로 실행하기보다 **Harness Plan -> Implement -> Clean-context Review -> Repair -> Completion Report** 흐름으로 조심스럽게 진행해야 하는 작업을 위해 만들었습니다.
 
 ```text
@@ -21,12 +23,34 @@ Harness Plan -> Execute approval -> Implement -> Clean-context Review -> Repair 
 | 📋 Completion | Approval Ledger, verification, Review status, unresolved risks, follow-ups를 Completion Report에 남깁니다. |
 | 🧰 Hooks | Harness artifact 형식과 명백히 위험한 command pattern을 최소한으로 검사합니다. |
 
+## ⚙️ Quickstart / 소스에서 설치
+
+이 저장소의 packaging은 다음 도구가 있다고 가정합니다.
+
+- `make`
+- `sh`
+- `git`
+- `zip`
+- `unzip`
+
+local checkout에서 plugin archive를 만들려면 다음을 실행합니다.
+
+```text
+make package
+```
+
+이 명령은 `.codex-plugin/plugin.json`과 Harness plugin 파일을 포함하는 loadable Codex plugin bundle인 `dist/harness.zip`을 만듭니다.
+
+사용 중인 Codex CLI 환경이 지원하는 plugin install/load 또는 marketplace mechanism으로 이 bundle을 설치하거나 로드한 뒤, command-like `$harness` prompt로 Harness를 호출하세요. 이 저장소는 현재 단일 install command를 확정해 문서화하지 않습니다.
+
+repository marketplace entry인 `.agents/plugins/marketplace.json`은 이후 release에 추가할 예정이며 현재 checkout에는 없습니다.
+
 ## ⚡ 2분 Quickstart
 
-1. 요청을 `$harness`로 시작하고 objective를 구체적으로 적습니다.
+1. prompt line을 command-like `$harness` invocation으로 시작하고 objective를 구체적으로 적습니다. optional leading whitespace가 허용되며, `use $harness`는 `use`가 소문자일 때 동작합니다.
 
    ```text
-   Use $harness for this change.
+   use $harness for this change.
 
    Objective: update the CLI usage docs so they explain dry-run mode and failure exit codes.
 
@@ -56,6 +80,12 @@ Harness Plan -> Execute approval -> Implement -> Clean-context Review -> Repair 
 
 전체 절차형 안내는 [docs/quickstart/README.ko.md](docs/quickstart/README.ko.md)를 참고하세요.
 
+## 📣 현재 상태
+
+Harness는 실험과 피드백을 위한 early-stage workflow harness입니다. 팀 또는 production use 전에 workflow prompt, hook behavior, packaging output, 그리고 repository rule과의 적합성을 검토하세요.
+
+Harness는 sandboxing, least-privilege access, 일반 code review, project-specific security control, automated verification, 사람의 판단을 대체하지 않습니다.
+
 ## ✅ Harness를 쓰기 좋은 경우
 
 - public behavior, API, contract, schema, user-facing workflow 변경
@@ -69,7 +99,7 @@ Harness Plan -> Execute approval -> Implement -> Clean-context Review -> Repair 
 - 일반 Codex 실행으로 충분한 아주 작은 한 줄 수정
 - 구현이 아니라 설명만 필요한 탐색성 질문
 - approval gate 없이 빠르게 반복해야 하는 작업
-- Harness를 설명하는 문서 작업 중 실제 gated workflow를 원하지 않는 경우
+- Harness를 설명하는 문서 작업. 실제 gated workflow를 원하지 않는다면 prompt line을 command-like `$harness` invocation으로 시작하지 마세요.
 
 ## 🧱 작업 크기
 
@@ -110,12 +140,24 @@ Harness에는 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `SubagentStop`, 
 
 현재 validator는 의도적으로 최소 범위만 다룹니다.
 
-- `UserPromptSubmit`은 prompt에 `$harness`가 있을 때 Harness context를 추가합니다.
+- `UserPromptSubmit`은 인용문이나 code block이 아닌 prompt line이 command-like `$harness` invocation으로 시작할 때만 Harness context를 추가합니다. 허용되는 형태는 optional leading whitespace, optional lowercase `use `, exact `$harness`, 그리고 whitespace 또는 line end입니다. prose 중간 mention, inline backtick mention, fenced code block, blockquote, uppercase variant, `$harness-extra` 같은 non-exact token은 활성화하지 않습니다.
 - `SubagentStop`은 planner, implementer, reviewer output shape를 확인합니다.
 - `Stop`은 Harness Plan, Repair Plan, Completion Report structure를 확인합니다.
 - `PreToolUse`는 credential read, environment dump, recursive secret search, broad destructive delete, destructive Git operation, destructive SQL, production-impact command처럼 명백히 위험한 shell-like command를 차단합니다.
 
 이 hooks는 Harness gate를 보조합니다. sandboxing, permission, project security control, 사람의 판단을 대체하지 않습니다.
+
+## 📦 Release Packaging
+
+release zip을 만들려면 다음을 실행합니다.
+
+```text
+make package
+```
+
+이 명령은 Git-tracked file과 non-ignored file에서 `dist/harness.zip`을 만듭니다. archive는 `.codex-plugin/plugin.json`을 포함하는 loadable Codex plugin bundle입니다. archive에 `.git/`, `__MACOSX/`, `__pycache__/`, `*.pyc`, `.DS_Store`, `dist/` path가 들어가지 않는지 검증하며, ignored local file은 packaging하지 않습니다.
+
+public release에서는 `dist/harness.zip`을 GitHub release artifact로 첨부하세요. repository marketplace entry인 `.agents/plugins/marketplace.json`은 이후 release에 추가할 예정이며 현재는 없습니다.
 
 ## ⚠️ 현재 제한
 
@@ -123,7 +165,11 @@ Harness guard는 denylist 기반 보조 휴리스틱이며 security boundary가 
 
 test suite의 [`KNOWN_FALSE_NEGATIVE_GAPS`](tests/test_harness_guard_pre_tool_use.py#L160)는 이 한계를 의도적으로 문서화한 사례입니다. policy상 unsafe로 보아야 하지만 runtime decoding, variable resolution, embedded interpreter analysis, 또는 한정할 수 없는 command form 전체의 coverage가 필요해서 denylist가 놓칠 수 있는 pattern을 포함합니다.
 
-Harness는 여전히 sandboxing, least-privilege permission, project-specific security control, automated verification, 코드리뷰, 사람의 판단을 대체하지 않습니다. 별도로, prompt hook은 제출된 prompt 안에 `$harness` token 또는 substring이 있는지만 확인하므로 literal token이 포함된 문서 작업도 Harness active context를 받을 수 있습니다.
+Harness는 여전히 sandboxing, least-privilege permission, project-specific security control, automated verification, 코드리뷰, 사람의 판단을 대체하지 않습니다.
+
+Prompt activation은 일반 mention보다 좁아서, Harness context는 optional leading whitespace와 optional lowercase `use `를 허용하는 code나 quote가 아닌 prompt line 시작의 command-like `$harness` invocation에서만 추가되며 prose 중간 mention, inline code, fenced code block, blockquote, uppercase variant, non-exact token은 활성화하지 않습니다.
+
+이 advisory denylist model 이후의 전환 방향은 [ADR 0001: P3 Enforcement Model](docs/adr/0001-p3-enforcement-model.md)에 문서화되어 있습니다.
 
 ## 🧠 Reasoning Effort
 
@@ -140,4 +186,5 @@ Harness reasoning effort는 workflow contract의 일부입니다.
 ## 📚 더 보기
 
 - 전체 quickstart: [docs/quickstart/README.ko.md](docs/quickstart/README.ko.md)
+- P3 enforcement model ADR: [docs/adr/0001-p3-enforcement-model.md](docs/adr/0001-p3-enforcement-model.md)
 - English README: [README.md](README.md)
