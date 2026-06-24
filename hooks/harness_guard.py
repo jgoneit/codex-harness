@@ -522,8 +522,36 @@ def submitted_prompt(data: dict[str, Any]) -> str:
     return ""
 
 
+HARNESS_INVOCATION_RE = re.compile(r"^\s*(?:use\s+)?\$harness(?:\s|$)")
+MARKDOWN_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+
+
+def harness_explicitly_invoked(prompt: str) -> bool:
+    in_fenced_code = False
+    fence_char = ""
+    fence_length = 0
+    for line in prompt.splitlines():
+        fence_match = MARKDOWN_FENCE_RE.match(line)
+        if fence_match:
+            marker = fence_match.group(1)
+            if not in_fenced_code:
+                in_fenced_code = True
+                fence_char = marker[0]
+                fence_length = len(marker)
+            elif marker[0] == fence_char and len(marker) >= fence_length:
+                in_fenced_code = False
+                fence_char = ""
+                fence_length = 0
+            continue
+        if in_fenced_code or line.lstrip().startswith(">"):
+            continue
+        if HARNESS_INVOCATION_RE.search(line):
+            return True
+    return False
+
+
 def handle_user_prompt_submit(data: dict[str, Any]) -> None:
-    if "$harness" not in submitted_prompt(data):
+    if not harness_explicitly_invoked(submitted_prompt(data)):
         return
     context = "\n".join(
         (
