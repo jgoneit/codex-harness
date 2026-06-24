@@ -4,13 +4,25 @@
 
 ![CI](https://github.com/jgoneit/harness/actions/workflows/ci.yml/badge.svg)
 
-Codex Harness는 Codex에서 사용하는 gated workflow plugin입니다. 바로 실행하기보다 **Harness Plan -> Implement -> Clean-context Review -> Repair -> Completion Report** 흐름으로 조심스럽게 진행해야 하는 작업을 위해 만들었습니다.
+Codex Harness는 Codex CLI를 위한 early-stage gated workflow plugin입니다. 바로 수정으로 뛰어들기보다 planning, approval, scoped implementation, clean-context review, repair, completion reporting을 분리해 higher-risk agent work를 더 의도적으로 진행하도록 돕습니다.
 
 ```text
-Harness Plan -> Execute approval -> Implement -> Clean-context Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion Report
+Plan -> Execute approval -> Implement -> Review -> Repair Plan -> Repair approval -> Repair Implement -> Completion
 ```
 
-여러 파일을 고치는 작업, workflow나 policy 변경, 동작 변경, security 관련 작업, API나 contract 변경처럼 계획, 제한된 구현, 독립 Review를 분리하는 편이 안전한 요청에 사용합니다.
+여러 파일을 고치는 작업, workflow나 policy 변경, 동작 변경, security 관련 작업, API나 contract 변경처럼 계획, 제한된 구현, clean-context review를 분리하는 편이 안전한 요청에 사용합니다.
+
+Harness는 sandbox, security boundary, least-privilege permission, code review, test, 사람의 판단을 대체하지 않습니다. 이 프로젝트는 workflow를 실험하고 피드백을 받을 수 있도록 early-stage로 공유하고 있습니다. authoritative workflow contract는 [docs/contracts/harness-contract.md](docs/contracts/harness-contract.md)입니다.
+
+## 👥 이 도구가 필요한 사람
+
+Harness는 다음 사용자에게 적합합니다.
+
+- scope control, explicit approval, independent review가 속도보다 중요한 multi-file 또는 higher-risk 변경을 Codex로 다루는 개발자
+- planning gate, role separation, clean-context review 같은 agent workflow pattern을 실험하는 사람
+- approval-gated AI coding workflow가 팀 프로세스에 맞는지 검토하는 팀
+
+spelling fix, one-line local cleanup, throwaway experiment, 탐색성 질문, 일반 Codex 실행으로 충분한 작업처럼 작고 risk가 낮은 일에는 보통 사용할 필요가 없습니다.
 
 ## 🧭 한눈에 보기
 
@@ -60,7 +72,7 @@ repository marketplace entry인 `.agents/plugins/marketplace.json`은 이후 rel
    - Verify by inspecting the docs and running existing docs lint if available.
    ```
 
-2. 생성된 Harness Plan을 검토합니다. Harness는 작업을 `Tiny`, `Small`, `Non-trivial`로 분류하고 scope, risks, acceptance criteria, verification path를 제시합니다.
+2. 생성된 Plan을 검토합니다. Harness는 작업을 `Tiny`, `Small`, `Non-trivial`로 분류하고 scope, risks, assumptions, proposed change plan, verification path를 제시합니다.
 
 3. Plan이 적절할 때만 구현을 승인합니다. approval prompt는 반드시 다음과 같아야 합니다.
 
@@ -105,7 +117,7 @@ Harness는 sandboxing, least-privilege access, 일반 code review, project-speci
 
 `Tiny`는 typo 수정, formatting-only 변경, comment-only 변경, 의미가 바뀌지 않는 짧은 문구 정리처럼 범위가 좁고 간단한 확인 하나로 충분한 작업입니다. 다만 project rule, user instruction, 또는 발견된 risk가 Review를 요구하면 Review 규칙을 따릅니다.
 
-`Small`은 명확한 verification path가 있는 local, low-risk 작업입니다. planner, implementer, Clean-context Review reviewer가 필요합니다.
+`Small`은 명확한 verification path가 있는 local, low-risk 작업입니다. planner, implementer, clean-context read-only reviewer가 필요합니다.
 
 `Non-trivial`은 의미 있는 조율이나 risk가 있는 작업입니다. behavior, API, data, security, dependency, deployment, workflow, policy, contract, multi-file, cross-module 변경이 여기에 들어갑니다. planner, implementer, reviewer가 필요하며, 필요하면 implementer domain을 둘 이상 둘 수 있습니다.
 
@@ -116,9 +128,9 @@ Harness는 sandboxing, least-privilege access, 일반 code review, project-speci
 ## 👥 역할
 
 - **Orchestrator:** gate, subagent handoff, scope control, integration, 최종 Completion Report를 관리합니다.
-- **Planner:** classification, current state, constraints, risks, acceptance criteria, verification strategy, implementation scope가 포함된 accepted Plan을 준비합니다.
+- **Planner:** classification, risk level, in-scope와 out-of-scope boundary, proposed changes, verification strategy, assumptions가 포함된 accepted Plan을 준비합니다.
 - **Implementer:** accepted file과 area 안에서만 변경하고, targeted verification을 실행하며, changed files, deviations, blocked checks, risk areas를 보고합니다. scope drift가 생기면 멈춥니다.
-- **Reviewer:** accepted Plan 기준으로 Clean-context Review를 수행하고, `Severity`, `Finding`, `Evidence`, `Required Action` columns가 있는 Findings Table과 `PASS`, `PASS_WITH_NOTES`, `REPAIR_REQUIRED`, `BLOCKED` 중 하나의 Verdict를 반환합니다.
+- **Reviewer:** accepted Plan과 diff를 기준으로 clean-context read-only Review를 수행하고, canonical findings table과 `PASS`, `PASS_WITH_NOTES`, `REPAIR_REQUIRED`, `BLOCKED` 중 하나의 Verdict를 반환합니다.
 
 ## 🧩 Subagent 활용 정책
 
@@ -137,6 +149,8 @@ Harness는 sandboxing, least-privilege access, 일반 code review, project-speci
 ## 🛡️ Hooks와 Guardrails
 
 Harness에는 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `SubagentStop`, `Stop`용 hook configuration이 포함되어 있습니다.
+
+canonical bundled hook config는 `hooks/hooks.json`입니다. root `hooks.json`은 compatibility copy이며 계속 동기화되어야 합니다.
 
 현재 validator는 의도적으로 최소 범위만 다룹니다.
 
@@ -197,5 +211,13 @@ Harness reasoning effort는 workflow contract의 일부입니다.
 ## 📚 더 보기
 
 - 전체 quickstart: [docs/quickstart/README.ko.md](docs/quickstart/README.ko.md)
+- Workflow contract: [docs/contracts/harness-contract.md](docs/contracts/harness-contract.md)
 - P3 enforcement model ADR: [docs/adr/0001-p3-enforcement-model.md](docs/adr/0001-p3-enforcement-model.md)
+- Connector integration contract: [docs/contracts/connector-integration.md](docs/contracts/connector-integration.md)
+- Worktree Isolation contract: [docs/contracts/worktree-isolation.md](docs/contracts/worktree-isolation.md)
+- Sub-agent handoff contract: [docs/contracts/subagent-handoff.md](docs/contracts/subagent-handoff.md)
+- Demo scenario: [docs/examples/docs-change.md](docs/examples/docs-change.md)
+- Demo scenario: [docs/examples/api-change.md](docs/examples/api-change.md)
+- Demo scenario: [docs/examples/security-sensitive-change.md](docs/examples/security-sensitive-change.md)
+- Demo scenario: [docs/examples/failed-review-repair-loop.md](docs/examples/failed-review-repair-loop.md)
 - English README: [README.md](README.md)
