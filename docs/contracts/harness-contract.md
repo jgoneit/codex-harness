@@ -12,6 +12,10 @@ The guard is therefore a supporting control for known-risk patterns, not a secur
 
 The test suite's [`KNOWN_FALSE_NEGATIVE_GAPS`](../../tests/test_harness_guard_pre_tool_use.py#L160) cases intentionally document this structural limit: they identify patterns that should be considered unsafe by policy but can evade a denylist because they require runtime decoding, variable resolution, embedded interpreter analysis, or coverage of an unbounded set of command forms.
 
+### Frozen Detector Set
+
+The denylist parser and detector set is frozen as-is. Newly identified bypasses must be documented as known structural false negatives, not handled by adding new denylist cases, regexes, parser branches, or detector logic. Closing these bypass classes should happen through a P3 enforcement model transition instead of further denylist expansion.
+
 This contract is authoritative for Harness workflow artifacts and phase gates. The canonical sub-agent handoff rules, including bounded briefs, `SubagentStop Summary` requirements, and role-collapse behavior, are defined in [Sub-agent Handoff Contract](subagent-handoff.md). Optional project-local continuity state is defined in [Memory & State Layer Contract](memory-state.md). Optional Git worktree hygiene for rollback and reviewability is defined in [Worktree Isolation Contract](worktree-isolation.md); it is not a sandbox, security boundary, permission system, or substitute for human review. Manual connector evidence intake and external-summary boundaries are defined in [Connector Integration Contract](connector-integration.md); connectors are external evidence sources, not approval or authority.
 
 ## Why The Workflow Exists
