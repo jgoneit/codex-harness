@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -197,6 +198,9 @@ def run_pre_tool_use(
     cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     payload = {"tool_name": tool, "tool_input": {"command": command}}
+    if cwd is None:
+        with tempfile.TemporaryDirectory() as root:
+            return run_pre_tool_use(command, tool, Path(root))
     return subprocess.run(
         [sys.executable, str(HARNESS_GUARD), "PreToolUse"],
         input=json.dumps(payload),
@@ -205,6 +209,19 @@ def run_pre_tool_use(
         check=False,
         cwd=cwd,
     )
+
+
+def command_hash_prefix(command: str) -> str:
+    return hashlib.sha256(command.encode("utf-8")).hexdigest()[:12]
+
+
+def read_audit_records(root: Path) -> list[dict[str, str]]:
+    audit_path = root / ".harness" / "audit" / "run.jsonl"
+    return [
+        json.loads(line)
+        for line in audit_path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
 
 
 def write_guard_config(root: Path, config: object) -> None:
@@ -459,6 +476,111 @@ class PreToolUseConfigTests(PreToolUseAssertions):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
             self.assertIn("must be a list of strings", result.stderr)
+
+
+class PreToolUseAuditTests(unittest.TestCase):
+    def assert_exact_audit_schema(self, record: dict[str, str]) -> None:
+        self.assertEqual(
+            set(record),
+            {"timestamp", "event_name", "category", "decision", "command_sha256"},
+        )
+        self.assertRegex(record["timestamp"], r"^\d{4}-\d{2}-\d{2}T")
+        self.assertIn(record["decision"], {"allow", "block"})
+        self.assertRegex(record["command_sha256"], r"^[0-9a-f]{12}$")
+
+    def test_pre_tool_use_block_audits_sanitized_record(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            command = "cat .env"
+
+            result = run_pre_tool_use(command, DEFAULT_TOOL, project)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
+            records = read_audit_records(project)
+            self.assertEqual(len(records), 1)
+            record = records[0]
+            self.assert_exact_audit_schema(record)
+            self.assertEqual(record["event_name"], "PreToolUse")
+            self.assertEqual(record["category"], "secret_file_read")
+            self.assertEqual(record["decision"], "block")
+            self.assertEqual(record["command_sha256"], command_hash_prefix(command))
+
+            raw_audit = (project / ".harness" / "audit" / "run.jsonl").read_text(encoding="utf-8")
+            self.assertNotIn(command, raw_audit)
+            self.assertNotIn(".env", raw_audit)
+
+    def test_pre_tool_use_allow_audits_sanitized_record(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            command = "git status"
+
+            result = run_pre_tool_use(command, DEFAULT_TOOL, project)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, "")
+            records = read_audit_records(project)
+            self.assertEqual(len(records), 1)
+            record = records[0]
+            self.assert_exact_audit_schema(record)
+            self.assertEqual(record["event_name"], "PreToolUse")
+            self.assertEqual(record["category"], "safe_command")
+            self.assertEqual(record["decision"], "allow")
+            self.assertEqual(record["command_sha256"], command_hash_prefix(command))
+            self.assertNotIn(command, json.dumps(record, separators=(",", ":")))
+
+    def test_pre_tool_use_config_allow_audits_bounded_category(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            write_guard_config(project, {"allow_db_local_connections": ["localhost"]})
+            command = "psql -h localhost"
+
+            result = run_pre_tool_use(command, DEFAULT_TOOL, project)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, "")
+            records = read_audit_records(project)
+            self.assertEqual(records[-1]["category"], "config_allowed_db_client_access")
+            self.assertEqual(records[-1]["decision"], "allow")
+            self.assertEqual(records[-1]["command_sha256"], command_hash_prefix(command))
+
+    def test_pre_tool_use_non_shell_and_empty_commands_audit_allow(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+
+            non_shell = run_pre_tool_use("cat .env", "Read", project)
+            empty = run_pre_tool_use("", DEFAULT_TOOL, project)
+
+            self.assertEqual(non_shell.returncode, 0, non_shell.stderr)
+            self.assertEqual(empty.returncode, 0, empty.stderr)
+            self.assertEqual(non_shell.stdout, "")
+            self.assertEqual(empty.stdout, "")
+            records = read_audit_records(project)
+            self.assertEqual([record["category"] for record in records], ["non_shell_command", "empty_command"])
+            self.assertEqual(records[0]["command_sha256"], command_hash_prefix("cat .env"))
+            self.assertEqual(records[1]["command_sha256"], command_hash_prefix(""))
+            raw_audit = (project / ".harness" / "audit" / "run.jsonl").read_text(encoding="utf-8")
+            self.assertNotIn("cat .env", raw_audit)
+            self.assertNotIn(".env", raw_audit)
+
+    def test_audit_write_failure_fails_open_with_sanitized_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            project = Path(root)
+            harness_dir = project / ".harness"
+            harness_dir.mkdir()
+            (harness_dir / "audit").write_text("not a directory", encoding="utf-8")
+            command = "cat .env"
+
+            result = run_pre_tool_use(command, DEFAULT_TOOL, project)
+
+            self.assertEqual(result.returncode, 0)
+            self.assertIn(COMPACT_BLOCK_DECISION_PREFIX, result.stdout)
+            self.assertEqual(
+                result.stderr,
+                "Harness audit write failed; continuing without audit record\n",
+            )
+            self.assertNotIn(command, result.stderr)
+            self.assertNotIn(".env", result.stderr)
 
 
 class PreToolUseKnownGapTests(PreToolUseAssertions):

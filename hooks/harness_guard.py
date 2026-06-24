@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import re
 import shlex
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -85,6 +87,9 @@ NOSQL_CLIENTS = {"mongosh", "mongo", "redis-cli"}
 DB_CLIENTS = SQL_CLIENTS | NOSQL_CLIENTS
 DB_CLIENT_INFORMATION_ARGS = {"--version", "-V", "--help"}
 GUARD_CONFIG_RELATIVE_PATH = ".harness/guard.json"
+AUDIT_RELATIVE_PATH = ".harness/audit/run.jsonl"
+AUDIT_HASH_HEX_CHARS = 12
+AUDIT_DECISIONS = {"allow", "block"}
 GUARD_CONFIG_ALLOW_KEYS = {"allow_db_local_connections", "allow_paths"}
 GUARD_CONFIG_METADATA_LIST_KEYS = {"verification_commands", "approval_required_paths"}
 GUARD_CONFIG_METADATA_BOOL_KEYS = {"review_required"}
@@ -352,6 +357,50 @@ def output_json(payload: dict[str, Any]) -> None:
     sys.stdout.write(json.dumps(payload, separators=(",", ":")))
 
 
+def audit_path() -> Path:
+    return Path.cwd() / AUDIT_RELATIVE_PATH
+
+
+def audit_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def command_hash_prefix(command_text: str) -> str:
+    return hashlib.sha256(command_text.encode("utf-8")).hexdigest()[:AUDIT_HASH_HEX_CHARS]
+
+
+def warn_audit_failed() -> None:
+    sys.stderr.write("Harness audit write failed; continuing without audit record\n")
+
+
+def append_audit_record(
+    event_name: str,
+    category: str,
+    decision: str,
+    command_text: str = "",
+) -> None:
+    try:
+        if decision not in AUDIT_DECISIONS:
+            raise ValueError("invalid audit decision")
+        record = {
+            "timestamp": audit_timestamp(),
+            "event_name": event_name,
+            "category": category,
+            "decision": decision,
+            "command_sha256": command_hash_prefix(command_text),
+        }
+        path = audit_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as audit_file:
+            audit_file.write(json.dumps(record, separators=(",", ":")) + "\n")
+    except Exception:
+        warn_audit_failed()
+
+
+def audit_stop_decision(event_name: str, category: str, decision: str) -> None:
+    append_audit_record(event_name, category, decision, "")
+
+
 def block(reason: str) -> None:
     output_json({"decision": "block", "reason": reason})
 
@@ -499,23 +548,40 @@ def handle_user_prompt_submit(data: dict[str, Any]) -> None:
 def handle_stop(data: dict[str, Any]) -> None:
     message = as_text(data.get("last_assistant_message"))
     if not message:
+        audit_stop_decision("Stop", "stop_empty_message", "allow")
         return
-    if is_plan_artifact(message) and PLAN_PROMPT not in message:
+    plan_artifact = is_plan_artifact(message)
+    repair_plan_artifact = is_repair_plan_artifact(message)
+    completion_report = is_completion_report(message)
+    if plan_artifact and PLAN_PROMPT not in message:
+        audit_stop_decision("Stop", "stop_missing_plan_prompt", "block")
         block(f"Harness Plan artifact is missing required approval prompt: {PLAN_PROMPT}")
         return
-    if is_repair_plan_artifact(message) and REPAIR_PROMPT not in message:
+    if repair_plan_artifact and REPAIR_PROMPT not in message:
+        audit_stop_decision("Stop", "stop_missing_repair_plan_prompt", "block")
         block(f"Harness Repair Plan artifact is missing required approval prompt: {REPAIR_PROMPT}")
         return
-    if is_completion_report(message):
+    if completion_report:
         missing = missing_terms(message, COMPLETION_SECTIONS)
         if missing:
+            audit_stop_decision("Stop", "stop_completion_missing_sections", "block")
             block("Harness Completion Report is missing required sections: " + ", ".join(missing))
             return
         if not any(status in message for status in REVIEW_STATUSES):
+            audit_stop_decision("Stop", "stop_completion_missing_review_status", "block")
             block(
                 "Harness Completion Report is missing a machine-readable Review status enum: "
                 + ", ".join(REVIEW_STATUSES)
             )
+            return
+    if plan_artifact:
+        audit_stop_decision("Stop", "stop_plan_artifact", "allow")
+    elif repair_plan_artifact:
+        audit_stop_decision("Stop", "stop_repair_plan_artifact", "allow")
+    elif completion_report:
+        audit_stop_decision("Stop", "stop_completion_report", "allow")
+    else:
+        audit_stop_decision("Stop", "stop_unclassified_message", "allow")
 
 
 def agent_role(agent_type: str) -> str | None:
@@ -532,30 +598,40 @@ def agent_role(agent_type: str) -> str | None:
 def handle_subagent_stop(data: dict[str, Any]) -> None:
     role = agent_role(as_text(data.get("agent_type")))
     if role is None:
+        audit_stop_decision("SubagentStop", "subagent_unknown_role", "allow")
         return
     message = as_text(data.get("last_assistant_message"))
     if role == "planner":
         missing = missing_terms(message, PLANNER_SECTIONS)
         if missing:
+            audit_stop_decision("SubagentStop", "subagent_planner_missing_sections", "block")
             block("Harness planner output is missing required sections: " + ", ".join(missing))
+            return
     elif role == "implementer":
         missing = missing_terms(message, IMPLEMENTER_SECTIONS)
         if missing:
+            audit_stop_decision("SubagentStop", "subagent_implementer_missing_sections", "block")
             block("Harness implementer output is missing required sections: " + ", ".join(missing))
+            return
     elif role == "reviewer":
         missing = missing_terms(message, REVIEWER_SECTIONS)
         if missing:
+            audit_stop_decision("SubagentStop", "subagent_reviewer_missing_sections", "block")
             block("Harness reviewer output is missing required sections: " + ", ".join(missing))
             return
         missing = missing_terms(message, REVIEWER_FINDING_FIELDS)
         if missing:
+            audit_stop_decision("SubagentStop", "subagent_reviewer_missing_finding_fields", "block")
             block("Harness reviewer Findings Table is missing required columns: " + ", ".join(missing))
             return
         if not any(verdict in message for verdict in REVIEWER_VERDICTS):
+            audit_stop_decision("SubagentStop", "subagent_reviewer_missing_verdict", "block")
             block(
                 "Harness reviewer output is missing a canonical verdict value: "
                 + ", ".join(REVIEWER_VERDICTS)
             )
+            return
+    audit_stop_decision("SubagentStop", f"subagent_{role}_allow", "allow")
 
 
 def string_fragment(value: Any) -> str:
@@ -2036,20 +2112,32 @@ def soft_category_allowed_by_config(
 def pre_tool_use(payload: dict[str, object]) -> int:
     tool_name, command_text = extract_tool_command(payload)
     if not command_text:
+        append_audit_record("PreToolUse", "empty_command", "allow", "")
         return 0
     if tool_name.lower() == "python_user_visible":
         command_text = "\n".join(extract_python_shell_commands(command_text))
     elif not should_inspect_command(tool_name, command_text):
+        append_audit_record("PreToolUse", "non_shell_command", "allow", command_text)
         return 0
     if not command_text:
+        append_audit_record("PreToolUse", "empty_command", "allow", "")
         return 0
     config = load_guard_config()
     dangerous = dangerous_command_category(command_text)
     if dangerous:
         category, explanation = dangerous
         if soft_category_allowed_by_config(category, command_text, config):
+            append_audit_record(
+                "PreToolUse",
+                "config_allowed_db_client_access",
+                "allow",
+                command_text,
+            )
             return 0
+        append_audit_record("PreToolUse", category, "block", command_text)
         block_pre_tool_use(category, explanation)
+        return 0
+    append_audit_record("PreToolUse", "safe_command", "allow", command_text)
     return 0
 
 
