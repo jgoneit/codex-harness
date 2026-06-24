@@ -8,14 +8,14 @@ For the full workflow contract, including canonical artifact sections, approval 
 
 ## 1. Invoke Harness Explicitly
 
-Start a request with `$harness` or include it clearly in the task:
+Start a non-quoted, non-fenced prompt line with `$harness` or `use $harness`:
 
 ```text
-Use $harness to plan, implement, and review this change:
+use $harness to plan, implement, and review this change:
 Update the public docs for the payment retry behavior.
 ```
 
-Harness is intended for explicit `$harness` invocation. Current limitation: the hook trigger checks for the `$harness` token/substring anywhere in the submitted prompt, so documentation mentions containing `$harness` can also receive active Harness context.
+Harness activates only when `$harness` starts a non-quoted, non-fenced line, or when `use $harness` starts such a line. It does not activate for inline code mentions, fenced code blocks, quote lines, sentence-middle mentions, uppercase variants, or non-exact tokens such as `$harness-extra`.
 
 ### Optional: Start From Connector Context
 
@@ -132,7 +132,7 @@ Harness guard decisions are a defense-in-depth signal below Codex approval and s
 ## Example Prompt
 
 ```text
-Use $harness for this change.
+use $harness for this change.
 
 Objective: update the CLI usage docs so they explain dry-run mode and failure exit codes.
 

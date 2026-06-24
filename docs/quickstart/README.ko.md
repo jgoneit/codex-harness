@@ -4,14 +4,14 @@
 
 ## 1. Harness를 명시적으로 호출하기
 
-요청을 `$harness`로 시작하거나 작업 내용에 명확히 포함합니다.
+인용문이나 fenced code block이 아닌 prompt line을 `$harness` 또는 `use $harness`로 시작합니다.
 
 ```text
-Use $harness to plan, implement, and review this change:
+use $harness to plan, implement, and review this change:
 Update the public docs for the payment retry behavior.
 ```
 
-Harness는 `$harness`를 명시적으로 호출하는 방식으로 사용하도록 의도되어 있습니다. 현재 제한: hook trigger는 제출된 prompt 안에 `$harness` token/substring이 있는지만 확인하므로, `$harness`가 포함된 문서 설명도 Harness active context를 받을 수 있습니다.
+Harness는 `$harness`가 인용문이나 fenced code block이 아닌 줄의 시작에 있거나, 그런 줄이 `use $harness`로 시작할 때만 활성화됩니다. inline code mention, fenced code block, quote line, 문장 중간 mention, uppercase variant, `$harness-extra` 같은 non-exact token에서는 활성화되지 않습니다.
 
 ## 2. Harness Plan 검토하기
 
@@ -118,7 +118,7 @@ Harness guard decision은 Codex approval과 sandboxing 아래의 defense-in-dept
 ## Example Prompt
 
 ```text
-Use $harness for this change.
+use $harness for this change.
 
 Objective: update the CLI usage docs so they explain dry-run mode and failure exit codes.
 
